@@ -58,7 +58,7 @@
             <set-payload value="#[output application/json --- {message: 'Bad request to A2A server: ' ++ (error.description default 'N/A')}]"
                          doc:name="400 Payload"/>
             <logger level="WARN" category="${logging.category}"
-                    message="#['[GLOBAL] HTTP:BAD_REQUEST | ' ++ (error.description default '')]"/>
+                    message="#[write({event:'GLOBAL',errorType:'HTTP:BAD_REQUEST',msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
         <!-- A2A server unavailable -->
         <on-error-propagate doc:name="HTTP Connectivity" type="HTTP:CONNECTIVITY">
@@ -66,7 +66,7 @@
             <set-payload value="#[output application/json --- {message: 'A2A agent server unreachable: ' ++ (error.description default 'N/A')}]"
                          doc:name="503 Payload"/>
             <logger level="ERROR" category="${logging.category}"
-                    message="#['[GLOBAL] HTTP:CONNECTIVITY | ' ++ (error.description default '')]"/>
+                    message="#[write({event:'GLOBAL',errorType:'HTTP:CONNECTIVITY',msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
         <!-- HTTP Timeout -->
         <on-error-propagate doc:name="HTTP Timeout" type="HTTP:TIMEOUT">
@@ -74,7 +74,7 @@
             <set-payload value="#[output application/json --- {message: 'Request timed out waiting for A2A agent.'}]"
                          doc:name="504 Payload"/>
             <logger level="ERROR" category="${logging.category}"
-                    message="#['[GLOBAL] HTTP:TIMEOUT | ' ++ (error.description default '')]"/>
+                    message="#[write({event:'GLOBAL',errorType:'HTTP:TIMEOUT',msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
         <!-- Validation / expression errors -->
         <on-error-propagate doc:name="Bad Request" type="MULE:EXPRESSION, MULE:VALIDATION">
@@ -82,7 +82,7 @@
             <set-payload value="#[output application/json --- {message: 'Bad request: ' ++ (error.description default 'N/A')}]"
                          doc:name="400 Payload"/>
             <logger level="WARN" category="${logging.category}"
-                    message="#['[GLOBAL] BAD_REQUEST | ' ++ (error.description default '')]"/>
+                    message="#[write({event:'GLOBAL',errorType:'MULE:BAD_REQUEST',msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
         <!-- Catch-all -->
         <on-error-propagate doc:name="Any Other Error" type="ANY">
@@ -90,7 +90,7 @@
             <set-payload value="#[output application/json --- {message: 'Internal server error: ' ++ (error.description default 'N/A')}]"
                          doc:name="500 Payload"/>
             <logger level="ERROR" category="${logging.category}"
-                    message="#['[GLOBAL] ' ++ (error.errorType.identifier default 'UNKNOWN') ++ ' | ' ++ (error.description default '')]"/>
+                    message="#[write({event:'GLOBAL',errorType:(error.errorType.identifier default 'UNKNOWN'),msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
     </error-handler>
 
