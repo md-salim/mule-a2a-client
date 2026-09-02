@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:a2a="http://www.mulesoft.org/schema/mule/a2a"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+         http://www.mulesoft.org/schema/mule/a2a  http://www.mulesoft.org/schema/mule/a2a/current/mule-a2a.xsd
          http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 
     <!-- Configuration Properties -->
@@ -30,21 +32,15 @@
     </http:listener-config>
 
     <!-- ================================================================
-         A2A AGENT REQUEST CONFIG — HTTP outbound to A2A Server
-         The A2A connector 2.0.0 provides server-side operations only.
-         Client communicates with the agent via JSON-RPC over HTTP.
-         Target server: http://${a2a.agent.host}:${a2a.agent.port}
-         Base path   : ${a2a.agent.basePath}  (e.g. /v1/sf-account-agent)
-         RPC endpoint: basePath + /rpc
-         Card URL    : basePath + /.well-known/agent-card.json
+         A2A CLIENT CONFIG — mule4-a2a-connector 2.0.0 (client-side)
+         Uses JSON-RPC binding to communicate with the CI SF Account Agent.
+         agentUrl: full base URL of the A2A agent (resolves /rpc automatically)
     ================================================================ -->
-    <http:request-config doc:id="a2a-agent-request-cfg-01"
-                         doc:name="A2A Agent Request Config"
-                         name="A2A_Agent_Request_Config"
-                         basePath="${a2a.agent.basePath}"
-                         responseTimeout="60000">
-        <http:request-connection host="${a2a.agent.host}" port="${a2a.agent.port}"/>
-    </http:request-config>
+    <a2a:client-config doc:id="a2a-client-cfg-01"
+                       doc:name="A2A Client Config"
+                       name="A2A_Client_Config">
+        <a2a:jsonrpc-client-connection agentUrl="${a2a.agent.url}"/>
+    </a2a:client-config>
 
     <!-- ================================================================
          GLOBAL ERROR HANDLER
@@ -52,21 +48,21 @@
     <error-handler doc:id="global-error-handler-01"
                    doc:name="Global Error Handler"
                    name="Global_Error_Handler">
-        <!-- A2A server returned JSON-RPC error -->
-        <on-error-propagate doc:name="HTTP Bad Request" type="HTTP:BAD_REQUEST">
-            <set-variable variableName="httpStatus" value="400" doc:name="Set 400"/>
-            <set-payload value="#[output application/json --- {message: 'Bad request to A2A server: ' ++ (error.description default 'N/A')}]"
-                         doc:name="400 Payload"/>
+        <!-- A2A task not found -->
+        <on-error-propagate doc:name="A2A Task Not Found" type="A2A:TASK_NOT_FOUND">
+            <set-variable variableName="httpStatus" value="404" doc:name="Set 404"/>
+            <set-payload value="#[output application/json --- {message: 'Task not found: ' ++ (error.description default 'N/A')}]"
+                         doc:name="404 Payload"/>
             <logger level="WARN" category="${logging.category}"
-                    message="#[write({event:'GLOBAL',errorType:'HTTP:BAD_REQUEST',msg:(error.description default 'N/A')},'application/json')]"/>
+                    message="#[write({event:'GLOBAL',errorType:'A2A:TASK_NOT_FOUND',msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
-        <!-- A2A server unavailable -->
-        <on-error-propagate doc:name="HTTP Connectivity" type="HTTP:CONNECTIVITY">
+        <!-- A2A connectivity error -->
+        <on-error-propagate doc:name="A2A Connectivity" type="A2A:CONNECTIVITY">
             <set-variable variableName="httpStatus" value="503" doc:name="Set 503"/>
             <set-payload value="#[output application/json --- {message: 'A2A agent server unreachable: ' ++ (error.description default 'N/A')}]"
                          doc:name="503 Payload"/>
             <logger level="ERROR" category="${logging.category}"
-                    message="#[write({event:'GLOBAL',errorType:'HTTP:CONNECTIVITY',msg:(error.description default 'N/A')},'application/json')]"/>
+                    message="#[write({event:'GLOBAL',errorType:'A2A:CONNECTIVITY',msg:(error.description default 'N/A')},'application/json')]"/>
         </on-error-propagate>
         <!-- HTTP Timeout -->
         <on-error-propagate doc:name="HTTP Timeout" type="HTTP:TIMEOUT">
