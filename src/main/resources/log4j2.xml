@@ -6,8 +6,8 @@
         </Console>
     </Appenders>
     <Loggers>
-        <AsyncLogger name="com.centric.a2aclient" level="DEBUG"/>
-        <AsyncLogger name="com.mulesoft.connectors.a2a" level="DEBUG"/>
+        <AsyncLogger name="com.centric.a2aclient" level="INFO"/>
+        <AsyncLogger name="com.mulesoft.connectors.a2a" level="INFO"/>
         <AsyncLogger name="org.mule.service.http" level="WARN"/>
         <AsyncLogger name="org.mule.runtime.core" level="INFO"/>
         <AsyncRoot level="WARN">
