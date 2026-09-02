@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MuleSoft A2A Connector 2.0 — Operations Overview</title>
+<style>
+  :root {
+    --primary: #00A1E0;
+    --dark: #032D60;
+    --accent: #FF7700;
+    --green: #2ECC71;
+    --red: #E74C3C;
+    --light: #F8FAFC;
+    --grey: #64748B;
+    --server-color: #1A3C6E;
+    --client-color: #1A5E3C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #fff; }
+
+  .slide {
+    width: 1280px; min-height: 720px;
+    margin: 20px auto; padding: 50px 60px;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+    position: relative; overflow: hidden; page-break-after: always;
+  }
+  .slide::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 6px; height: 100%;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+  }
+  .slide-number {
+    position: absolute; bottom: 20px; right: 30px;
+    font-size: 12px; color: rgba(255,255,255,0.3);
+  }
+
+  /* ---- TITLE SLIDE ---- */
+  .title-slide {
+    background: linear-gradient(135deg, #032D60, #00A1E0);
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center; text-align: center;
+  }
+  .title-slide::before { display: none; }
+  .title-slide h1 { font-size: 48px; font-weight: 700; margin-bottom: 16px; }
+  .title-slide h2 { font-size: 24px; opacity: 0.85; font-weight: 300; margin-bottom: 30px; }
+  .title-slide .subtitle { font-size: 16px; opacity: 0.7; background: rgba(255,255,255,0.1); padding: 10px 24px; border-radius: 30px; }
+
+  /* ---- SECTION SLIDE ---- */
+  .section-slide {
+    display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+    background: linear-gradient(135deg, #1a3a6e, #0f2040);
+  }
+  .section-slide .section-label { font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: var(--primary); margin-bottom: 16px; }
+  .section-slide h2 { font-size: 56px; font-weight: 700; line-height: 1.1; }
+  .section-slide p { font-size: 18px; opacity: 0.75; margin-top: 20px; max-width: 600px; }
+
+  h2.slide-title { font-size: 32px; color: var(--primary); margin-bottom: 30px; border-bottom: 2px solid rgba(0,161,224,0.3); padding-bottom: 12px; }
+  h3.slide-subtitle { font-size: 20px; color: var(--accent); margin-bottom: 20px; }
+
+  /* ---- CARDS GRID ---- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 20px;
+    border-left: 4px solid var(--primary);
+    transition: transform 0.2s;
+  }
+  .card.server { border-left-color: var(--primary); }
+  .card.client { border-left-color: var(--green); }
+  .card.sse    { border-left-color: var(--accent); }
+  .card h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .card p  { font-size: 13px; opacity: 0.75; line-height: 1.5; }
+  .card .tag {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 20px; margin-bottom: 8px;
+  }
+  .tag.server-tag  { background: rgba(0,161,224,0.2); color: var(--primary); }
+  .tag.client-tag  { background: rgba(46,204,113,0.2); color: var(--green); }
+  .tag.sse-tag     { background: rgba(255,119,0,0.2);  color: var(--accent); }
+
+  /* ---- FLOW DIAGRAM ---- */
+  .flow {
+    display: flex; align-items: center; gap: 0;
+    background: rgba(255,255,255,0.03); border-radius: 10px; padding: 20px;
+    flex-wrap: wrap;
+  }
+  .flow-box {
+    background: rgba(0,161,224,0.15); border: 1px solid var(--primary);
+    border-radius: 8px; padding: 12px 18px; text-align: center;
+    min-width: 130px; font-size: 13px; font-weight: 600;
+  }
+  .flow-box.client-box { background: rgba(46,204,113,0.15); border-color: var(--green); }
+  .flow-box.agent-box  { background: rgba(255,119,0,0.15);  border-color: var(--accent); }
+  .flow-box.mcp-box    { background: rgba(150,50,200,0.15); border-color: #9932CC; }
+  .flow-arrow { font-size: 22px; margin: 0 8px; opacity: 0.6; flex-shrink: 0; }
+  .flow-label { font-size: 10px; opacity: 0.6; margin-top: 4px; }
+
+  /* ---- OP DETAIL ---- */
+  .op-detail { display: flex; gap: 30px; align-items: flex-start; }
+  .op-left { flex: 1; }
+  .op-right { flex: 1; }
+  .op-box {
+    background: rgba(255,255,255,0.05); border-radius: 10px; padding: 20px;
+    border: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px;
+  }
+  .op-box h4 { font-size: 14px; color: var(--primary); margin-bottom: 8px; }
+  .op-box p, .op-box li { font-size: 13px; opacity: 0.8; line-height: 1.6; }
+  .op-box ul { padding-left: 18px; }
+  .code-block {
+    background: rgba(0,0,0,0.4); border-radius: 8px; padding: 14px;
+    font-family: 'Courier New', monospace; font-size: 12px;
+    line-height: 1.6; color: #a8e6cf; overflow-x: auto;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .code-block .kw   { color: #89b4fa; }
+  .code-block .str  { color: #a6e3a1; }
+  .code-block .attr { color: #f9e2af; }
+  .code-block .cmt  { color: #6c7086; font-style: italic; }
+
+  /* ---- TWO COLUMN ---- */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  /* ---- TABLE ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: rgba(0,161,224,0.2); color: var(--primary); padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  tr:hover td { background: rgba(255,255,255,0.04); }
+  td.yes { color: var(--green); font-weight: 600; }
+  td.no  { color: rgba(255,255,255,0.35); }
+
+  /* ---- BADGE ---- */
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .badge.blue   { background: rgba(0,161,224,0.25); color: #89b4fa; }
+  .badge.green  { background: rgba(46,204,113,0.25); color: #a6e3a1; }
+  .badge.orange { background: rgba(255,119,0,0.25);  color: #fab387; }
+  .badge.purple { background: rgba(150,50,200,0.25); color: #cba6f7; }
+
+  /* ---- PRINT ---- */
+  @media print {
+    body { background: white; color: black; }
+    .slide { page-break-after: always; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== SLIDE 1: TITLE ===================== -->
+<div class="slide title-slide">
+  <div style="font-size:60px; margin-bottom:16px;">🔗</div>
+  <h1>MuleSoft A2A Connector 2.0</h1>
+  <h2>Agent-to-Agent Protocol — Operations Overview</h2>
+  <div class="subtitle">Server Operations &nbsp;|&nbsp; Client Operations &nbsp;|&nbsp; Streaming & Push Notifications</div>
+  <div class="slide-number">1</div>
+</div>
+
+<!-- ===================== SLIDE 2: WHAT IS A2A ===================== -->
+<div class="slide">
+  <h2 class="slide-title">What is A2A Protocol?</h2>
+  <div class="two-col">
+    <div>
+      <div class="op-box">
+        <h4>🎯 Definition</h4>
+        <p>A2A (Agent-to-Agent) is an open protocol that enables AI agents to communicate with each other securely and reliably using standard HTTP + JSON-RPC.</p>
+      </div>
+      <div class="op-box">
+        <h4>🏗️ Key Concepts</h4>
+        <ul>
+          <li><strong>Task</strong> — A unit of work assigned to an agent</li>
+          <li><strong>Message</strong> — Input sent to the agent</li>
+          <li><strong>Artifact</strong> — Output produced by the agent</li>
+          <li><strong>Agent Card</strong> — Agent's capability manifest</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="op-box">
+        <h4>📡 Communication Bindings</h4>
+        <ul>
+          <li><strong>JSON-RPC 2.0</strong> — Method-based RPC over HTTP POST<br/><span style="opacity:0.6;font-size:11px;">POST /agent/rpc</span></li>
+          <li style="margin-top:10px;"><strong>HTTP+JSON</strong> — REST-style binding<br/><span style="opacity:0.6;font-size:11px;">POST /agent/rest</span></li>
+          <li style="margin-top:10px;"><strong>SSE (Server-Sent Events)</strong> — Real-time streaming<br/><span style="opacity:0.6;font-size:11px;">Accept: text/event-stream</span></li>
+        </ul>
+      </div>
+      <div class="op-box">
+        <h4>🔄 Task Lifecycle</h4>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:12px;margin-top:4px;">
+          <span class="badge orange">SUBMITTED</span>
+          <span style="opacity:0.5;">→</span>
+          <span class="badge blue">WORKING</span>
+          <span style="opacity:0.5;">→</span>
+          <span class="badge green">COMPLETED</span>
+          <span style="opacity:0.5;">|</span>
+          <span class="badge purple">CANCELED</span>
+          <span style="opacity:0.5;">|</span>
+          <span class="badge" style="background:rgba(231,76,60,0.25);color:#f38ba8;">FAILED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">2</div>
+</div>
+
+<!-- ===================== SLIDE 3: ARCHITECTURE ===================== -->
+<div class="slide">
+  <h2 class="slide-title">Architecture Overview</h2>
+  <div style="margin-bottom:24px;">
+    <div class="flow">
+      <div class="flow-box client-box">👤 Consumer<div class="flow-label">Browser / App / Agent</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box client-box">🔌 mule-a2a-client<div class="flow-label">Port 8084 | REST Facade</div></div>
+      <div class="flow-arrow">→<br/><span style="font-size:10px;opacity:0.5;">JSON-RPC</span></div>
+      <div class="flow-box agent-box">🤖 mule-a2a-server<div class="flow-label">Port 8083 | A2A Agent</div></div>
+      <div class="flow-arrow">→<br/><span style="font-size:10px;opacity:0.5;">MCP</span></div>
+      <div class="flow-box mcp-box">⚙️ mule-mcp-server<div class="flow-label">Port 8082 | MCP Tools</div></div>
+      <div class="flow-arrow">→<br/><span style="font-size:10px;opacity:0.5;">HTTPS</span></div>
+      <div class="flow-box" style="background:rgba(150,50,200,0.15);border-color:#9932CC;">☁️ Salesforce<div class="flow-label">CRM Backend</div></div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="op-box">
+      <h4>🖥️ A2A Server Role (mule-a2a-server)</h4>
+      <p>Hosts the A2A agent. Listens for incoming A2A protocol requests via JSON-RPC or HTTP+JSON, processes them using Gemini LLM + MCP tools, and returns structured task results.</p>
+    </div>
+    <div class="op-box">
+      <h4>📱 A2A Client Role (mule-a2a-client)</h4>
+      <p>Acts as a REST facade. Exposes clean HTTP endpoints for consumers and forwards requests to the A2A server using the A2A connector's client operations.</p>
+    </div>
+  </div>
+  <div class="slide-number">3</div>
+</div>
+
+<!-- ===================== SLIDE 4: SECTION — SERVER ===================== -->
+<div class="slide section-slide">
+  <div class="section-label">Part 1</div>
+  <h2>A2A Server<br/>Operations</h2>
+  <p>Operations used in Mule flows that expose the A2A agent capability — listeners, task management, artifact updates, and push notifications.</p>
+  <div class="slide-number">4</div>
+</div>
+
+<!-- ===================== SLIDE 5: TASK LISTENER ===================== -->
+<div class="slide">
+  <h2 class="slide-title">🎧 a2a:task-listener</h2>
+  <div class="op-detail">
+    <div class="op-left">
+      <div class="op-box">
+        <h4>What it does</h4>
+        <p>The primary listener that receives ALL A2A protocol operations (SendMessage, GetTask, CancelTask, ListTasks, SubscribeToTask). Acts as the main entry point for the A2A agent flow.</p>
+      </div>
+      <div class="op-box">
+        <h4>Key Attributes</h4>
+        <ul>
+          <li><strong>attributes.taskId</strong> — Unique task ID</li>
+          <li><strong>attributes.contextId</strong> — Conversation context</li>
+          <li><strong>attributes.operationName</strong> — Which A2A method was called</li>
+          <li><strong>payload</strong> — MessageSendParams or operation params</li>
+        </ul>
+      </div>
+      <div class="op-box">
+        <h4>Triggered By</h4>
+        <p>SendMessage, SendStreamingMessage, GetTask, CancelTask, ListTasks, SubscribeToTask</p>
+      </div>
+    </div>
+    <div class="op-right">
+      <div class="code-block">
+<span class="cmt"><!-- Routes by operationName --></span>
+<<span class="kw">a2a:task-listener</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>/>
+
+<<span class="kw">choice</span>>
+  <<span class="kw">when</span> <span class="attr">expression</span>=<span class="str">"#[attributes.operationName
+      == 'SendMessage']"</span>>
+    <span class="cmt"><!-- Your agent logic here --></span>
+  </<span class="kw">when</span>>
+  <<span class="kw">when</span> <span class="attr">expression</span>=<span class="str">"#[attributes.operationName
+      == 'GetTask']"</span>>
+    <span class="cmt"><!-- Retrieve task --></span>
+  </<span class="kw">when</span>>
+  <<span class="kw">otherwise</span>>
+    <span class="cmt"><!-- Connector-managed --></span>
+  </<span class="kw">otherwise</span>>
+</<span class="kw">choice</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">5</div>
+</div>
+
+<!-- ===================== SLIDE 6: ON ASYNC REQUEST LISTENER ===================== -->
+<div class="slide">
+  <h2 class="slide-title">⚡ a2a:on-async-request-listener</h2>
+  <div class="op-detail">
+    <div class="op-left">
+      <div class="op-box">
+        <h4>What it does</h4>
+        <p>Handles the <strong>initial handshake</strong> for SendStreamingMessage. It fires immediately when a streaming request arrives and MUST return an initial Task with TASK_STATE_SUBMITTED. This seeds the SSE stream so events can flow.</p>
+      </div>
+      <div class="op-box">
+        <h4>⚠️ Critical Rule</h4>
+        <p>Without this listener, SendStreamingMessage will NOT work. The connector needs this to open the SSE channel before the main task-listener processes the request in the background.</p>
+      </div>
+      <div class="op-box">
+        <h4>When it fires</h4>
+        <p>Only for <strong>SendStreamingMessage</strong> requests.</p>
+      </div>
+    </div>
+    <div class="op-right">
+      <div class="code-block">
+<<span class="kw">flow</span> <span class="attr">name</span>=<span class="str">"async-request-flow"</span>>
+  <<span class="kw">a2a:on-async-request-listener</span>
+      <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>/>
+
+  <span class="cmt"><!-- MUST return initial Task --></span>
+  <<span class="kw">ee:transform</span>>
+    <<span class="kw">ee:set-payload</span>>
+      {
+        task: {
+          id: attributes.taskId,
+          contextId: attributes.contextId,
+          status: {
+            state: <span class="str">"TASK_STATE_SUBMITTED"</span>
+          }
+        }
+      }
+    </<span class="kw">ee:set-payload</span>>
+  </<span class="kw">ee:transform</span>>
+</<span class="kw">flow</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">6</div>
+</div>
+
+<!-- ===================== SLIDE 7: UPDATE TASK STATUS ===================== -->
+<div class="slide">
+  <h2 class="slide-title">📊 a2a:update-task-status</h2>
+  <div class="op-detail">
+    <div class="op-left">
+      <div class="op-box">
+        <h4>What it does</h4>
+        <p>Updates the task's current state and optionally attaches a status message. Used throughout agent processing to communicate progress: WORKING → COMPLETED / FAILED / CANCELED.</p>
+      </div>
+      <div class="op-box">
+        <h4>Valid State Transitions</h4>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+          <span class="badge orange">SUBMITTED</span>
+          <span class="badge blue">WORKING</span>
+          <span class="badge green">COMPLETED</span>
+          <span class="badge purple">CANCELED</span>
+          <span class="badge" style="background:rgba(231,76,60,0.25);color:#f38ba8;">FAILED</span>
+        </div>
+      </div>
+    </div>
+    <div class="op-right">
+      <div class="code-block">
+<<span class="kw">a2a:update-task-status</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>>
+  <<span class="kw">a2a:status-content</span>><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  statusUpdate: {
+    taskId: vars.taskId,
+    contextId: vars.contextId,
+    status: {
+      state: "TASK_STATE_WORKING",
+      message: {
+        messageId: uuid(),
+        role: "ROLE_AGENT",
+        parts: [{ text: "Processing..." }]
+      }
+    }
+  }
+}]]]>
+  </<span class="kw">a2a:status-content</span>>
+</<span class="kw">a2a:update-task-status</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">7</div>
+</div>
+
+<!-- ===================== SLIDE 8: UPDATE TASK ARTIFACT ===================== -->
+<div class="slide">
+  <h2 class="slide-title">📦 a2a:update-task-artifact</h2>
+  <div class="op-detail">
+    <div class="op-left">
+      <div class="op-box">
+        <h4>What it does</h4>
+        <p>Publishes the agent's result as an <strong>Artifact</strong> — the actual data output of the task. An artifact contains one or more Parts (text, data, or file). For streaming, each artifact call fires an SSE event to the client.</p>
+      </div>
+      <div class="op-box">
+        <h4>Part Types</h4>
+        <ul>
+          <li><strong>text</strong> — Plain text or JSON string</li>
+          <li><strong>data</strong> — Structured JSON object with mimeType</li>
+          <li><strong>file</strong> — File content with bytes or URI</li>
+        </ul>
+      </div>
+      <div class="op-box">
+        <h4>When to use</h4>
+        <p>After the agent completes its work (MCP tool call, LLM response, etc.). Called BEFORE update-task-status COMPLETED.</p>
+      </div>
+    </div>
+    <div class="op-right">
+      <div class="code-block">
+<<span class="kw">a2a:update-task-artifact</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>>
+  <<span class="kw">a2a:artifact-content</span>><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  artifactUpdate: {
+    taskId: vars.taskId,
+    contextId: vars.contextId,
+    artifact: {
+      artifactId: uuid(),
+      name: "salesforce-result",
+      parts: [{
+        text: write(vars.mcpResult,
+                    "application/json")
+      }]
+    }
+  }
+}]]]>
+  </<span class="kw">a2a:artifact-content</span>>
+</<span class="kw">a2a:update-task-artifact</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">8</div>
+</div>
+
+<!-- ===================== SLIDE 9: SET TASK METADATA ===================== -->
+<div class="slide">
+  <h2 class="slide-title">🏷️ a2a:set-task-metadata</h2>
+  <div class="op-detail">
+    <div class="op-left">
+      <div class="op-box">
+        <h4>What it does</h4>
+        <p>Attaches custom key-value metadata to a task. Useful for storing context about how the task was processed — tool name, model used, processing time, etc. This metadata is retrievable via GetTask.</p>
+      </div>
+      <div class="op-box">
+        <h4>Common Use Cases</h4>
+        <ul>
+          <li>Recording which MCP tool was invoked</li>
+          <li>Storing the LLM model version used</li>
+          <li>Audit trail (processedAt timestamp)</li>
+          <li>Debugging context for failed tasks</li>
+        </ul>
+      </div>
+      <div class="op-box">
+        <h4>Key Parameter</h4>
+        <p><strong>taskId</strong> — required as an XML attribute (not from context)</p>
+      </div>
+    </div>
+    <div class="op-right">
+      <div class="code-block">
+<<span class="kw">a2a:set-task-metadata</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>
+    <span class="attr">taskId</span>=<span class="str">"#[vars.taskId]"</span>>
+  <<span class="kw">a2a:metadata</span>><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  mcpTool: vars.mcpToolName,
+  userMessage: vars.userMessage,
+  geminiModel: "${gemini.model}",
+  processedAt: now() as String {
+    format: "yyyy-MM-dd'T'HH:mm:ss'Z'"
+  }
+}]]]>
+  </<span class="kw">a2a:metadata</span>>
+</<span class="kw">a2a:set-task-metadata</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">9</div>
+</div>
+
+<!-- ===================== SLIDE 10: SEND PUSH NOTIFICATION ===================== -->
+<div class="slide">
+  <h2 class="slide-title">🔔 a2a:send-push-notification</h2>
+  <div class="op-detail">
+    <div class="op-left">
+      <div class="op-box">
+        <h4>What it does</h4>
+        <p>Sends an HTTP POST callback to the registered push notification URL with the task's current status. Allows clients to receive real-time updates without polling.</p>
+      </div>
+      <div class="op-box">
+        <h4>⚡ How Push URL is Set</h4>
+        <p>Two ways to register a push URL:</p>
+        <ul>
+          <li><strong>In SendMessage request</strong> — Pass <code>pushUrl</code> in the client request body → mule-a2a-client includes it in <code>configuration.taskPushNotificationConfig</code></li>
+          <li><strong>Explicit API call</strong> — Client calls <code>CreateTaskPushNotificationConfig</code> API</li>
+        </ul>
+      </div>
+      <div class="op-box">
+        <h4>Error Handling</h4>
+        <p>Always wrap in a <code>choice</code> or <code>try</code> — if no URL registered, the operation raises <code>A2A:PUSH_NOTIFICATION_UNSUPPORTED</code>.</p>
+      </div>
+    </div>
+    <div class="op-right">
+      <div class="code-block">
+<span class="cmt"><!-- Only send if pushUrl was provided --></span>
+<<span class="kw">choice</span>>
+  <<span class="kw">when</span> <span class="attr">expression</span>=<span class="str">"#[vars.pushUrl != null]"</span>>
+    <<span class="kw">a2a:send-push-notification</span>
+        <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>>
+      <<span class="kw">a2a:notification-message</span>><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  statusUpdate: {
+    taskId: vars.taskId,
+    status: {
+      state: "TASK_STATE_COMPLETED",
+      message: {
+        role: "ROLE_AGENT",
+        parts: [{ text: "Done!" }]
+      }
+    }
+  }
+}]]]>
+      </<span class="kw">a2a:notification-message</span>>
+    </<span class="kw">a2a:send-push-notification</span>>
+  </<span class="kw">when</span>>
+  <<span class="kw">otherwise</span>>
+    <<span class="kw">logger</span> <span class="attr">message</span>=<span class="str">"push skipped"</span>/>
+  </<span class="kw">otherwise</span>>
+</<span class="kw">choice</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">10</div>
+</div>
+
+<!-- ===================== SLIDE 11: PUSH CONFIG + AUTHORIZER ===================== -->
+<div class="slide">
+  <h2 class="slide-title">🔒 Task Authorizer + Push Config Listeners</h2>
+  <div class="two-col">
+    <div>
+      <div class="op-box" style="border-left:4px solid var(--accent);">
+        <h4 style="color:var(--accent);">🛡️ a2a:task-authorizer-listener</h4>
+        <p style="margin-bottom:10px;">An <strong>interceptor gate</strong> that fires automatically before task-management operations: GetTask, CancelTask, SubscribeToTask, ListTasks, and push config CRUD.</p>
+        <p>Use it to validate the caller's identity or ownership. Raise an error to deny; do nothing to allow.</p>
+        <div style="margin-top:10px;font-size:12px;opacity:0.7;">
+          <strong>NOT called for:</strong> SendMessage, SendStreamingMessage
+        </div>
+      </div>
+      <div class="code-block" style="font-size:11px;">
+<<span class="kw">a2a:task-authorizer-listener</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>/>
+<span class="cmt">// payload = task params</span>
+<span class="cmt">// attributes.operationName = op type</span>
+<span class="cmt">// Raise error to deny access</span>
+      </div>
+    </div>
+    <div>
+      <div class="op-box" style="border-left:4px solid var(--green);">
+        <h4 style="color:var(--green);">📬 a2a:push-notification-config-listener</h4>
+        <p style="margin-bottom:10px;">Fires when a client calls <strong>CreateTaskPushNotificationConfig</strong>. Allows the server to validate the callback URL before the connector stores it.</p>
+        <p>If the flow completes successfully → config is registered. Raise an error to reject the URL.</p>
+        <div style="margin-top:10px;font-size:12px;opacity:0.7;">
+          <strong>payload.url</strong> — the callback URL to validate
+        </div>
+      </div>
+      <div class="code-block" style="font-size:11px;">
+<<span class="kw">a2a:push-notification-config-listener</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>/>
+<<span class="kw">choice</span>>
+  <<span class="kw">when</span> <span class="attr">expression</span>=<span class="str">"#[payload.url != null]"</span>>
+    <span class="cmt">// Valid — connector auto-stores</span>
+  </<span class="kw">when</span>>
+  <<span class="kw">otherwise</span>>
+    <<span class="kw">raise-error</span> <span class="attr">type</span>=<span class="str">"APP:INVALID_URL"</span>/>
+  </<span class="kw">otherwise</span>>
+</<span class="kw">choice</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">11</div>
+</div>
+
+<!-- ===================== SLIDE 12: GET TASKS ===================== -->
+<div class="slide">
+  <h2 class="slide-title">📋 a2a:get-tasks & a2a:get-tasks-by-context</h2>
+  <div class="two-col">
+    <div>
+      <div class="op-box">
+        <h4>a2a:get-tasks</h4>
+        <p>Retrieves a batch of tasks from the server's internal Object Store by their IDs. Returns found tasks + list of IDs that were not found.</p>
+        <ul style="margin-top:10px;">
+          <li><strong>Input</strong> — List of task IDs (via payload)</li>
+          <li><strong>historyLength</strong> — Number of history entries to include</li>
+          <li><strong>Output</strong> — <code>{ tasks: [...], nonExistentTaskIds: [...] }</code></li>
+        </ul>
+      </div>
+      <div class="code-block">
+<<span class="kw">ee:transform</span>>
+  <<span class="kw">ee:set-payload</span>>
+    [payload.id default vars.taskId]
+  </<span class="kw">ee:set-payload</span>>
+</<span class="kw">ee:transform</span>>
+
+<<span class="kw">a2a:get-tasks</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>
+    <span class="attr">historyLength</span>=<span class="str">"#[5]"</span>/>
+      </div>
+    </div>
+    <div>
+      <div class="op-box">
+        <h4>a2a:get-tasks-by-context</h4>
+        <p>Retrieves all tasks belonging to a specific <strong>contextId</strong>. Used for SubscribeToTask — fetches the context so the SSE stream knows what to replay.</p>
+        <ul style="margin-top:10px;">
+          <li><strong>contextId</strong> — Groups related tasks in a conversation</li>
+          <li><strong>Output</strong> — All tasks for that context</li>
+        </ul>
+      </div>
+      <div class="code-block">
+<<span class="kw">a2a:get-tasks-by-context</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Server_Config"</span>
+    <span class="attr">contextId</span>=<span class="str">"#[attributes.contextId
+        default vars.contextId]"</span>/>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">12</div>
+</div>
+
+<!-- ===================== SLIDE 13: SECTION CLIENT ===================== -->
+<div class="slide section-slide" style="background:linear-gradient(135deg,#1a5e3c,#0f3020);">
+  <div class="section-label" style="color:var(--green);">Part 2</div>
+  <h2>A2A Client<br/>Operations</h2>
+  <p>Operations used in Mule flows that call an A2A agent server — discovery, messaging, task management, and push notification configuration.</p>
+  <div class="slide-number">13</div>
+</div>
+
+<!-- ===================== SLIDE 14: GET CARD + SEND MESSAGE ===================== -->
+<div class="slide">
+  <h2 class="slide-title">🃏 a2a:get-card &nbsp;&&nbsp; 💬 a2a:send-message</h2>
+  <div class="two-col">
+    <div>
+      <div class="op-box" style="border-left:4px solid var(--green);">
+        <h4 style="color:var(--green);">a2a:get-card</h4>
+        <p>Fetches the Agent Card from the server's <code>/.well-known/agent-card.json</code>. Returns the agent's name, description, capabilities, supported interfaces, and available skills.</p>
+        <p style="margin-top:8px;opacity:0.7;font-size:12px;">Use this to discover what an agent can do before sending messages.</p>
+      </div>
+      <div class="code-block">
+<<span class="kw">a2a:get-card</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>/>
+<span class="cmt">// payload = AgentCard JSON</span>
+<span class="cmt">// payload.name, payload.skills, etc.</span>
+      </div>
+    </div>
+    <div>
+      <div class="op-box" style="border-left:4px solid var(--green);">
+        <h4 style="color:var(--green);">a2a:send-message</h4>
+        <p><strong>Blocking</strong> call to the agent. Waits for the task to reach a terminal state and returns the completed Task object with artifacts. Ideal for synchronous use cases.</p>
+        <ul style="margin-top:8px;font-size:12px;">
+          <li><code>configuration.taskPushNotificationConfig</code> — optional push URL</li>
+          <li><code>contextId</code> — continue existing conversation</li>
+        </ul>
+      </div>
+      <div class="code-block">
+<<span class="kw">a2a:send-message</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:message</span>><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+  message: {
+    messageId: uuid(),
+    role: "ROLE_USER",
+    parts: [{ text: vars.userMessage }]
+  },
+  configuration: {
+    acceptedOutputModes: ["application/json"],
+    (taskPushNotificationConfig: {
+      url: vars.pushUrl
+    }) if vars.pushUrl != null
+  }
+}]]]>
+  </<span class="kw">a2a:message</span>>
+</<span class="kw">a2a:send-message</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">14</div>
+</div>
+
+<!-- ===================== SLIDE 15: SEND STREAM + SUBSCRIBE ===================== -->
+<div class="slide">
+  <h2 class="slide-title">📡 a2a:send-stream-message &nbsp;&&nbsp; 🔄 a2a:subscribe-to-task</h2>
+  <div class="two-col">
+    <div>
+      <div class="op-box" style="border-left:4px solid var(--accent);">
+        <h4 style="color:var(--accent);">a2a:send-stream-message</h4>
+        <p><strong>Non-blocking</strong> streaming call. The server returns SUBMITTED immediately and sends SSE events as processing progresses. The client receives a live stream of status updates and artifacts.</p>
+        <ul style="margin-top:8px;font-size:12px;">
+          <li>SUBMITTED → WORKING → artifact → COMPLETED</li>
+          <li>Requires <code>on-async-request-listener</code> on server</li>
+        </ul>
+      </div>
+      <div class="code-block">
+<<span class="kw">a2a:send-stream-message</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:stream-message</span>><![CDATA[#[payload]]]>
+  </<span class="kw">a2a:stream-message</span>>
+</<span class="kw">a2a:send-stream-message</span>>
+<span class="cmt">// payload = SSE stream</span>
+<span class="cmt">// Set response Content-Type: text/event-stream</span>
+      </div>
+    </div>
+    <div>
+      <div class="op-box" style="border-left:4px solid var(--accent);">
+        <h4 style="color:var(--accent);">a2a:subscribe-to-task</h4>
+        <p><strong>Re-connect</strong> to an existing task's SSE stream. If the connection was dropped mid-task, the client can re-subscribe and receive buffered events from where it left off.</p>
+        <ul style="margin-top:8px;font-size:12px;">
+          <li>Task must be in WORKING state</li>
+          <li>Receives buffered + new events</li>
+        </ul>
+      </div>
+      <div class="code-block">
+<<span class="kw">ee:transform</span>>
+  <<span class="kw">ee:set-payload</span>>
+    { id: vars.taskId }
+  </<span class="kw">ee:set-payload</span>>
+</<span class="kw">ee:transform</span>>
+
+<<span class="kw">a2a:subscribe-to-task</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:task-id-params</span>><![CDATA[#[payload]]]>
+  </<span class="kw">a2a:task-id-params</span>>
+</<span class="kw">a2a:subscribe-to-task</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">15</div>
+</div>
+
+<!-- ===================== SLIDE 16: LIST + GET + CANCEL TASK ===================== -->
+<div class="slide">
+  <h2 class="slide-title">📋 a2a:list-tasks &nbsp;|&nbsp; a2a:get-task &nbsp;|&nbsp; a2a:cancel-task</h2>
+  <div class="cards">
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:list-tasks</h4>
+      <p>Lists all tasks on the agent server. Supports filtering by contextId, pageSize, and historyLength. Returns a paged array of tasks.</p>
+      <div class="code-block" style="margin-top:10px;">
+<<span class="kw">a2a:list-tasks</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:list-tasks-params</span>>
+    <![CDATA[#[{ contextId: vars.contextId }]]]>
+  </<span class="kw">a2a:list-tasks-params</span>>
+</<span class="kw">a2a:list-tasks</span>>
+      </div>
+    </div>
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:get-task</h4>
+      <p>Retrieves a single task by ID with its full history, status, and artifacts. Specify historyLength to control how many history entries to include.</p>
+      <div class="code-block" style="margin-top:10px;">
+<<span class="kw">a2a:get-task</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:task-query</span>>
+    <![CDATA[#[{ id: vars.taskId,
+      historyLength: 10 }]]]>
+  </<span class="kw">a2a:task-query</span>>
+</<span class="kw">a2a:get-task</span>>
+      </div>
+    </div>
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:cancel-task</h4>
+      <p>Requests the agent server to cancel a running task. The server transitions the task to TASK_STATE_CANCELED and returns the updated task object.</p>
+      <div class="code-block" style="margin-top:10px;">
+<<span class="kw">a2a:cancel-task</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:task-id</span>>
+    <![CDATA[#[vars.taskId]]]>
+  </<span class="kw">a2a:task-id</span>>
+</<span class="kw">a2a:cancel-task</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">16</div>
+</div>
+
+<!-- ===================== SLIDE 17: PUSH NOTIFICATION CLIENT OPS ===================== -->
+<div class="slide">
+  <h2 class="slide-title">🔔 Push Notification Client Operations</h2>
+  <div class="cards" style="grid-template-columns:repeat(2,1fr);">
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:create-push-notification-config</h4>
+      <p>Registers a webhook callback URL for a specific task. The server will POST status updates to this URL as the task progresses.</p>
+      <div class="code-block" style="margin-top:8px;font-size:11px;">
+<<span class="kw">a2a:create-push-notification-config</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:task-push-notification-config</span>>
+    <![CDATA[#[{ taskId: vars.taskId,
+      url: payload.url,
+      (token: payload.token) if payload.token != null }]]]>
+  </<span class="kw">a2a:task-push-notification-config</span>>
+</<span class="kw">a2a:create-push-notification-config</span>>
+      </div>
+    </div>
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:list-push-notification-configs</h4>
+      <p>Lists all registered push notification configs for a task. Returns an array of configs with their IDs and URLs.</p>
+      <div class="code-block" style="margin-top:8px;font-size:11px;">
+<<span class="kw">a2a:list-push-notification-configs</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:list-push-config-params</span>>
+    <![CDATA[#[{ taskId: vars.taskId }]]]>
+  </<span class="kw">a2a:list-push-config-params</span>>
+</<span class="kw">a2a:list-push-notification-configs</span>>
+      </div>
+    </div>
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:get-push-notification-config</h4>
+      <p>Retrieves a specific push notification config by its ID. Useful for verifying that the registration succeeded.</p>
+      <div class="code-block" style="margin-top:8px;font-size:11px;">
+<<span class="kw">a2a:get-push-notification-config</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:get-push-config-params</span>>
+    <![CDATA[#[{ taskId: vars.taskId, id: vars.configId }]]]>
+  </<span class="kw">a2a:get-push-config-params</span>>
+</<span class="kw">a2a:get-push-notification-config</span>>
+      </div>
+    </div>
+    <div class="card client">
+      <span class="tag client-tag">Client</span>
+      <h4>a2a:delete-push-notification-config</h4>
+      <p>Removes a push notification config by its ID. The server will no longer send webhook callbacks to that URL for the task.</p>
+      <div class="code-block" style="margin-top:8px;font-size:11px;">
+<<span class="kw">a2a:delete-push-notification-config</span>
+    <span class="attr">config-ref</span>=<span class="str">"A2A_Client_Config"</span>>
+  <<span class="kw">a2a:get-push-config-params</span>>
+    <![CDATA[#[{ taskId: vars.taskId, id: vars.configId }]]]>
+  </<span class="kw">a2a:get-push-config-params</span>>
+</<span class="kw">a2a:delete-push-notification-config</span>>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">17</div>
+</div>
+
+<!-- ===================== SLIDE 18: OPERATIONS SUMMARY TABLE ===================== -->
+<div class="slide">
+  <h2 class="slide-title">📊 All Operations — Quick Reference</h2>
+  <table>
+    <thead>
+      <tr><th>Operation</th><th>Side</th><th>Type</th><th>Description</th><th>SSE?</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>a2a:task-listener</td><td><span class="badge blue">Server</span></td><td>Listener</td><td>Main A2A entry point — routes all operations</td><td class="no">—</td></tr>
+      <tr><td>a2a:on-async-request-listener</td><td><span class="badge blue">Server</span></td><td>Listener</td><td>SSE handshake — seeds SUBMITTED task</td><td class="yes">Yes</td></tr>
+      <tr><td>a2a:push-notification-config-listener</td><td><span class="badge blue">Server</span></td><td>Listener</td><td>Validates push URL registration</td><td class="no">—</td></tr>
+      <tr><td>a2a:task-authorizer-listener</td><td><span class="badge blue">Server</span></td><td>Listener</td><td>Gates GetTask/CancelTask/ListTasks</td><td class="no">—</td></tr>
+      <tr><td>a2a:update-task-status</td><td><span class="badge blue">Server</span></td><td>Operation</td><td>Changes task state (WORKING/COMPLETED/FAILED)</td><td class="yes">Yes</td></tr>
+      <tr><td>a2a:update-task-artifact</td><td><span class="badge blue">Server</span></td><td>Operation</td><td>Publishes task result/output parts</td><td class="yes">Yes</td></tr>
+      <tr><td>a2a:set-task-metadata</td><td><span class="badge blue">Server</span></td><td>Operation</td><td>Attaches custom metadata to task</td><td class="no">—</td></tr>
+      <tr><td>a2a:send-push-notification</td><td><span class="badge blue">Server</span></td><td>Operation</td><td>HTTP POST callback to registered URL</td><td class="no">—</td></tr>
+      <tr><td>a2a:get-tasks</td><td><span class="badge blue">Server</span></td><td>Operation</td><td>Retrieves tasks by IDs from Object Store</td><td class="no">—</td></tr>
+      <tr><td>a2a:get-tasks-by-context</td><td><span class="badge blue">Server</span></td><td>Operation</td><td>Retrieves all tasks for a contextId</td><td class="no">—</td></tr>
+      <tr><td>a2a:get-card</td><td><span class="badge green">Client</span></td><td>Operation</td><td>Fetches agent's capability card</td><td class="no">—</td></tr>
+      <tr><td>a2a:send-message</td><td><span class="badge green">Client</span></td><td>Operation</td><td>Blocking message — waits for completion</td><td class="no">—</td></tr>
+      <tr><td>a2a:send-stream-message</td><td><span class="badge green">Client</span></td><td>Operation</td><td>Streaming message — SSE event stream</td><td class="yes">Yes</td></tr>
+      <tr><td>a2a:subscribe-to-task</td><td><span class="badge green">Client</span></td><td>Operation</td><td>Re-connects to existing task SSE stream</td><td class="yes">Yes</td></tr>
+      <tr><td>a2a:list-tasks / get-task / cancel-task</td><td><span class="badge green">Client</span></td><td>Operation</td><td>Task management operations</td><td class="no">—</td></tr>
+      <tr><td>Push notification CRUD (4 ops)</td><td><span class="badge green">Client</span></td><td>Operation</td><td>Create/List/Get/Delete push configs</td><td class="no">—</td></tr>
+    </tbody>
+  </table>
+  <div class="slide-number">18</div>
+</div>
+
+<!-- ===================== SLIDE 19: SUMMARY ===================== -->
+<div class="slide title-slide" style="background:linear-gradient(135deg,#032D60,#1a5e3c);">
+  <div style="font-size:50px;margin-bottom:20px;">✅</div>
+  <h1 style="font-size:40px;">A2A Connector 2.0 — Summary</h1>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:30px;text-align:left;max-width:900px;">
+    <div style="background:rgba(0,161,224,0.15);border:1px solid rgba(0,161,224,0.3);border-radius:10px;padding:20px;">
+      <h3 style="color:#89b4fa;margin-bottom:12px;">🖥️ Server Side (10 ops)</h3>
+      <ul style="font-size:13px;line-height:2;">
+        <li>4 Listeners — task, async, push-config, authorizer</li>
+        <li>2 Artifact/Status updaters</li>
+        <li>1 Metadata setter</li>
+        <li>1 Push notification sender</li>
+        <li>2 Task getters (by ID / by context)</li>
+      </ul>
+    </div>
+    <div style="background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:20px;">
+      <h3 style="color:#a6e3a1;margin-bottom:12px;">📱 Client Side (11 ops)</h3>
+      <ul style="font-size:13px;line-height:2;">
+        <li>1 Agent card discovery</li>
+        <li>2 Messaging ops (blocking + streaming)</li>
+        <li>1 Subscribe (re-connect SSE)</li>
+        <li>3 Task management (list/get/cancel)</li>
+        <li>4 Push config CRUD</li>
+      </ul>
+    </div>
+  </div>
+  <div style="margin-top:30px;font-size:14px;opacity:0.6;">
+    MuleSoft A2A Connector 2.0 &nbsp;|&nbsp; mule4-a2a-connector &nbsp;|&nbsp; https://docs.mulesoft.com/general/
+  </div>
+  <div class="slide-number">19</div>
+</div>
+
+</body>
+</html>
