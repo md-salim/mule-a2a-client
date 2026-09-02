@@ -114,11 +114,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\"\n}",
+            "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/v1/a2a-client/messages",
-            "description": "Sends a blocking SendMessage to the A2A agent to list all Salesforce accounts.\nAuto-saves: taskId, contextId"
+            "description": "Sends a blocking SendMessage to the A2A agent to list all Salesforce accounts.\nAuto-saves: taskId, contextId\n\nOptional: add pushUrl to receive a webhook callback on completion."
           },
           "response": []
         },
@@ -333,6 +333,43 @@
             },
             "url": "{{baseUrl}}/v1/a2a-client/messages/stream",
             "description": "Sends a streaming message to the A2A agent.\nThe connector establishes an SSE stream — events arrive as: SUBMITTED → artifact → COMPLETED.\nSet Accept: text/event-stream in Postman to see SSE events."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — With Push Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t + ' | push notification will fire on completion');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\",\n  \"pushUrl\": \"{{pushCallbackUrl}}\",\n  \"pushToken\": \"{{pushBearerToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Sends a SendMessage with a pushUrl.\nThe A2A server extracts the pushUrl from MessageSendParams.configuration.taskPushNotificationConfig and sends a webhook callback on task completion.\n\nUses: {{pushCallbackUrl}}, {{pushBearerToken}}\nAuto-saves: taskId, contextId"
           },
           "response": []
         },

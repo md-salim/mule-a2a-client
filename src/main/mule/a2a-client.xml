@@ -35,14 +35,24 @@
             <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
             <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
-        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-MESSAGE',event:'REQUEST',userMessage:(payload.userMessage default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-MESSAGE',event:'REQUEST',userMessage:(payload.userMessage default 'N/A'),pushUrl:(payload.pushUrl default null)},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="userMessage" value="#[payload.userMessage default 'List all Salesforce accounts']" doc:name="Store userMessage"/>
         <set-variable variableName="contextId" value="#[payload.contextId default null]" doc:name="Store contextId"/>
+        <set-variable variableName="pushUrl" value="#[payload.pushUrl default null]" doc:name="Store pushUrl"/>
+        <set-variable variableName="pushToken" value="#[payload.pushToken default null]" doc:name="Store pushToken"/>
         <ee:transform doc:name="Build MessageSendParams" doc:id="t2">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var base = { message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] } }
+var pushCfg = if (vars.pushUrl != null)
+    { taskPushNotificationConfig: { url: vars.pushUrl } ++ (if (vars.pushToken != null) {token: vars.pushToken} else {}) }
+else
+    {}
+var cfg = { acceptedOutputModes: ["application/json", "text/plain"] } ++ pushCfg
+var base = {
+    message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] },
+    configuration: cfg
+}
 ---
 if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></ee:set-payload>
             </ee:message>
@@ -66,14 +76,24 @@ if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></
             <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"text/event-stream","Cache-Control":"no-cache"}]]]></http:headers></http:response>
             <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
-        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-STREAM-MESSAGE',event:'REQUEST',userMessage:(payload.userMessage default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-STREAM-MESSAGE',event:'REQUEST',userMessage:(payload.userMessage default 'N/A'),pushUrl:(payload.pushUrl default null)},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="userMessage" value="#[payload.userMessage default 'List all Salesforce accounts']" doc:name="Store userMessage"/>
         <set-variable variableName="contextId" value="#[payload.contextId default null]" doc:name="Store contextId"/>
+        <set-variable variableName="pushUrl" value="#[payload.pushUrl default null]" doc:name="Store pushUrl"/>
+        <set-variable variableName="pushToken" value="#[payload.pushToken default null]" doc:name="Store pushToken"/>
         <ee:transform doc:name="Build MessageSendParams" doc:id="t3">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var base = { message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] } }
+var pushCfg = if (vars.pushUrl != null)
+    { taskPushNotificationConfig: { url: vars.pushUrl } ++ (if (vars.pushToken != null) {token: vars.pushToken} else {}) }
+else
+    {}
+var cfg = { acceptedOutputModes: ["application/json", "text/plain"] } ++ pushCfg
+var base = {
+    message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] },
+    configuration: cfg
+}
 ---
 if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></ee:set-payload>
             </ee:message>
@@ -176,7 +196,12 @@ output application/json
         <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
         <ee:transform doc:name="Build TaskIdParams" doc:id="t7">
             <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { id: vars.taskId }]]></ee:set-payload>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	id: vars.taskId
+}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:subscribe-to-task config-ref="A2A_Client_Config" doc:name="A2A Subscribe To Task" doc:id="a2a-subscribe-task">
