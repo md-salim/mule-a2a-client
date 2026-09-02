@@ -1,0 +1,581 @@
+{
+  "info": {
+    "_postman_id": "a2a-mule-client-v1",
+    "name": "Mule A2A Client — CI SF Account Agent",
+    "description": "REST client for mule-a2a-client (port 8084). All requests go through the A2A Client facade which forwards them as JSON-RPC to mule-a2a-server (port 8083).\n\n**Flow:** Send Message → taskId auto-saved → use in Get Task / Cancel Task / Push Configs\n**Tip:** Run 'List All Tasks' to pick up an existing taskId from a previous session.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084",
+      "type": "string",
+      "description": "mule-a2a-client base URL (port 8084)"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated from Send Message or List Tasks responses"
+    },
+    {
+      "key": "contextId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated from Send Message response"
+    },
+    {
+      "key": "sfAccountId",
+      "value": "0015g00000AbCdEFGH",
+      "type": "string",
+      "description": "Salesforce Account ID to use in Get/Update/Delete requests"
+    },
+    {
+      "key": "pushCallbackUrl",
+      "value": "https://webhook.site/your-unique-id",
+      "type": "string",
+      "description": "Webhook URL for A2A push notifications"
+    },
+    {
+      "key": "pushBearerToken",
+      "value": "test-token",
+      "type": "string"
+    },
+    {
+      "key": "pushConfigId",
+      "value": "",
+      "type": "string",
+      "description": "Auto-populated from Create Push Notification Config response"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Agent Discovery",
+      "item": [
+        {
+          "name": "GET Agent Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"Has agent name\", function() { pm.expect(pm.response.json().name).to.be.a('string'); });",
+                  "var b = pm.response.json();",
+                  "if (b.name) console.log('[A2A-CLIENT] Agent: ' + b.name + ' | Skills: ' + (b.skills ? b.skills.length : 0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/a2a-client/agent-card",
+            "description": "Fetches the A2A Agent Card from the CI SF Account Agent Server via the client facade.\nReturns: name, description, capabilities, skills, supportedInterfaces."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Send Message",
+      "description": "All Send Message requests auto-save taskId and contextId as collection variables.",
+      "item": [
+        {
+          "name": "Send Message — List All Accounts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "var c = b.contextId ? b.contextId : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', c || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t + ' | state: ' + (b.status && b.status.state ? b.status.state : 'N/A'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Sends a blocking SendMessage to the A2A agent to list all Salesforce accounts.\nAuto-saves: taskId, contextId"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — List by Industry (Technology)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"Show me all Technology industry accounts\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Lists accounts filtered by Technology industry."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — Create Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"Create a new Salesforce account named Acme Corp in Technology industry\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Creates a new Salesforce Account via the A2A agent."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — Get Account by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"Get Salesforce account {{sfAccountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Gets a specific Salesforce Account by ID.\nUses collection variable: {{sfAccountId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — Update Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"Update Salesforce account {{sfAccountId}} change industry to Finance\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Updates a Salesforce Account via the A2A agent."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — Delete Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"Delete Salesforce account {{sfAccountId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Deletes a Salesforce Account via the A2A agent."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Message — With Context ID (Continue Conversation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var t = b.id ? b.id : null;",
+                  "if (t) {",
+                  "    pm.collectionVariables.set('taskId', t);",
+                  "    pm.collectionVariables.set('contextId', b.contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId: ' + t + ' | contextId: ' + (b.contextId || ''));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\",\n  \"contextId\": \"{{contextId}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages",
+            "description": "Sends a message within an existing conversation context.\nRun after any Send Message to reuse the same contextId.\nUses: {{contextId}} (auto-saved from previous Send Message)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Task Management",
+      "description": "Get, list and cancel A2A tasks. 'List All Tasks' auto-saves the first taskId from the array.",
+      "item": [
+        {
+          "name": "List All Tasks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "pm.test(\"Has tasks array\", function() { pm.expect(pm.response.json()).to.have.property('tasks'); });",
+                  "",
+                  "// Auto-save first taskId from the tasks array",
+                  "var b = pm.response.json();",
+                  "var tasks = (b.tasks && Array.isArray(b.tasks)) ? b.tasks : [];",
+                  "if (tasks.length > 0 && tasks[0].id) {",
+                  "    pm.collectionVariables.set('taskId', tasks[0].id);",
+                  "    pm.collectionVariables.set('contextId', tasks[0].contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId from list[0]: ' + tasks[0].id + ' | state: ' + (tasks[0].status && tasks[0].status.state ? tasks[0].status.state : 'N/A'));",
+                  "    console.log('[A2A-CLIENT] Total tasks found: ' + tasks.length);",
+                  "} else {",
+                  "    console.log('[A2A-CLIENT] No tasks found in response');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/a2a-client/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "a2a-client", "tasks"]
+            },
+            "description": "Lists all A2A tasks stored on the server.\n\n✅ AUTO-SAVES: taskId and contextId from tasks[0]\n\nUse this to pick up an existing taskId from a previous session.\nSupports optional query params: contextId, pageSize, historyLength"
+          },
+          "response": []
+        },
+        {
+          "name": "List Tasks — With Context Filter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "var b = pm.response.json();",
+                  "var tasks = (b.tasks && Array.isArray(b.tasks)) ? b.tasks : [];",
+                  "if (tasks.length > 0 && tasks[0].id) {",
+                  "    pm.collectionVariables.set('taskId', tasks[0].id);",
+                  "    pm.collectionVariables.set('contextId', tasks[0].contextId || '');",
+                  "    console.log('[A2A-CLIENT] taskId from filtered list[0]: ' + tasks[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/a2a-client/tasks?contextId={{contextId}}&historyLength=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "a2a-client", "tasks"],
+              "query": [
+                { "key": "contextId", "value": "{{contextId}}", "description": "Filter by context ID" },
+                { "key": "historyLength", "value": "5", "description": "Number of history entries to include" },
+                { "key": "pageSize", "value": "10", "description": "Max tasks to return", "disabled": true }
+              ]
+            },
+            "description": "Lists tasks filtered by contextId.\nUses: {{contextId}} (auto-saved from Send Message)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Task by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "if (b.id) {",
+                  "    console.log('[A2A-CLIENT] Task: ' + b.id + ' | state: ' + (b.status && b.status.state ? b.status.state : 'N/A'));",
+                  "    // Log artifacts if present",
+                  "    if (b.artifacts && b.artifacts.length > 0) {",
+                  "        console.log('[A2A-CLIENT] Artifacts: ' + b.artifacts.length);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}?historyLength=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "a2a-client", "tasks", "{{taskId}}"],
+              "query": [
+                { "key": "historyLength", "value": "10" }
+              ]
+            },
+            "description": "Retrieves full details of a specific task including status, artifacts, and history.\nUses: {{taskId}} (auto-saved from Send Message or List All Tasks)"
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "if (b.status) {",
+                  "    console.log('[A2A-CLIENT] Cancel result — state: ' + (b.status.state || 'N/A'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/cancel",
+            "description": "Cancels the specified A2A task.\nUses: {{taskId}} (auto-saved from Send Message or List All Tasks)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Push Notification Config",
+      "description": "Manage push notification callbacks for A2A tasks.\nRequires: {{taskId}} (run Send Message or List All Tasks first)",
+      "item": [
+        {
+          "name": "Create Push Notification Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "if (b.id) {",
+                  "    pm.collectionVariables.set('pushConfigId', b.id);",
+                  "    console.log('[A2A-CLIENT] Push config created: ' + b.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{pushCallbackUrl}}\",\n  \"token\": \"{{pushBearerToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/push-notification-configs",
+            "description": "Registers a webhook callback for task status updates.\nThe A2A server will POST SSE-style updates to the callback URL.\n\nUses: {{taskId}}, {{pushCallbackUrl}}, {{pushBearerToken}}\nAuto-saves: pushConfigId"
+          },
+          "response": []
+        },
+        {
+          "name": "List Push Notification Configs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", function() { pm.response.to.have.status(200); });",
+                  "pm.test(\"No error\", function() { pm.expect(pm.response.json()).to.not.have.property('error'); });",
+                  "var b = pm.response.json();",
+                  "var configs = b.pushNotificationConfigs || [];",
+                  "if (configs.length > 0 && configs[0].id) {",
+                  "    pm.collectionVariables.set('pushConfigId', configs[0].id);",
+                  "    console.log('[A2A-CLIENT] pushConfigId from list[0]: ' + configs[0].id);",
+                  "}",
+                  "console.log('[A2A-CLIENT] Total push configs: ' + configs.length);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/push-notification-configs",
+            "description": "Lists all push notification configs registered for a task.\nAuto-saves: pushConfigId from configs[0]\nUses: {{taskId}}"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
