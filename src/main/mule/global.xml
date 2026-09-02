@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+         http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+
+    <!-- Configuration Properties -->
+    <configuration-properties doc:id="config-props-01"
+                               doc:name="Configuration Properties"
+                               file="config.properties"/>
+
+    <!-- ================================================================
+         HTTP LISTENER CONFIG — A2A Client REST API on port 8084
+         Exposes:
+           GET  /v1/a2a-client/agent-card
+           POST /v1/a2a-client/messages
+           GET  /v1/a2a-client/tasks
+           GET  /v1/a2a-client/tasks/{taskId}
+           POST /v1/a2a-client/tasks/{taskId}/cancel
+           POST /v1/a2a-client/tasks/{taskId}/push-notification-configs
+           GET  /v1/a2a-client/tasks/{taskId}/push-notification-configs
+    ================================================================ -->
+    <http:listener-config doc:id="a2a-client-http-listener-cfg-01"
+                          doc:name="A2A Client HTTP Listener Config"
+                          name="A2A_Client_HTTP_Listener_Config">
+        <http:listener-connection host="0.0.0.0" port="${http.port}"/>
+    </http:listener-config>
+
+    <!-- ================================================================
+         A2A AGENT REQUEST CONFIG — HTTP outbound to A2A Server
+         The A2A connector 2.0.0 provides server-side operations only.
+         Client communicates with the agent via JSON-RPC over HTTP.
+         Target server: http://${a2a.agent.host}:${a2a.agent.port}
+         Base path   : ${a2a.agent.basePath}  (e.g. /v1/sf-account-agent)
+         RPC endpoint: basePath + /rpc
+         Card URL    : basePath + /.well-known/agent-card.json
+    ================================================================ -->
+    <http:request-config doc:id="a2a-agent-request-cfg-01"
+                         doc:name="A2A Agent Request Config"
+                         name="A2A_Agent_Request_Config"
+                         basePath="${a2a.agent.basePath}"
+                         responseTimeout="60000">
+        <http:request-connection host="${a2a.agent.host}" port="${a2a.agent.port}"/>
+    </http:request-config>
+
+    <!-- ================================================================
+         GLOBAL ERROR HANDLER
+    ================================================================ -->
+    <error-handler doc:id="global-error-handler-01"
+                   doc:name="Global Error Handler"
+                   name="Global_Error_Handler">
+        <!-- A2A server returned JSON-RPC error -->
+        <on-error-propagate doc:name="HTTP Bad Request" type="HTTP:BAD_REQUEST">
+            <set-variable variableName="httpStatus" value="400" doc:name="Set 400"/>
+            <set-payload value="#[output application/json --- {message: 'Bad request to A2A server: ' ++ (error.description default 'N/A')}]"
+                         doc:name="400 Payload"/>
+            <logger level="WARN" category="${logging.category}"
+                    message="#['[GLOBAL] HTTP:BAD_REQUEST | ' ++ (error.description default '')]"/>
+        </on-error-propagate>
+        <!-- A2A server unavailable -->
+        <on-error-propagate doc:name="HTTP Connectivity" type="HTTP:CONNECTIVITY">
+            <set-variable variableName="httpStatus" value="503" doc:name="Set 503"/>
+            <set-payload value="#[output application/json --- {message: 'A2A agent server unreachable: ' ++ (error.description default 'N/A')}]"
+                         doc:name="503 Payload"/>
+            <logger level="ERROR" category="${logging.category}"
+                    message="#['[GLOBAL] HTTP:CONNECTIVITY | ' ++ (error.description default '')]"/>
+        </on-error-propagate>
+        <!-- HTTP Timeout -->
+        <on-error-propagate doc:name="HTTP Timeout" type="HTTP:TIMEOUT">
+            <set-variable variableName="httpStatus" value="504" doc:name="Set 504"/>
+            <set-payload value="#[output application/json --- {message: 'Request timed out waiting for A2A agent.'}]"
+                         doc:name="504 Payload"/>
+            <logger level="ERROR" category="${logging.category}"
+                    message="#['[GLOBAL] HTTP:TIMEOUT | ' ++ (error.description default '')]"/>
+        </on-error-propagate>
+        <!-- Validation / expression errors -->
+        <on-error-propagate doc:name="Bad Request" type="MULE:EXPRESSION, MULE:VALIDATION">
+            <set-variable variableName="httpStatus" value="400" doc:name="Set 400"/>
+            <set-payload value="#[output application/json --- {message: 'Bad request: ' ++ (error.description default 'N/A')}]"
+                         doc:name="400 Payload"/>
+            <logger level="WARN" category="${logging.category}"
+                    message="#['[GLOBAL] BAD_REQUEST | ' ++ (error.description default '')]"/>
+        </on-error-propagate>
+        <!-- Catch-all -->
+        <on-error-propagate doc:name="Any Other Error" type="ANY">
+            <set-variable variableName="httpStatus" value="500" doc:name="Set 500"/>
+            <set-payload value="#[output application/json --- {message: 'Internal server error: ' ++ (error.description default 'N/A')}]"
+                         doc:name="500 Payload"/>
+            <logger level="ERROR" category="${logging.category}"
+                    message="#['[GLOBAL] ' ++ (error.errorType.identifier default 'UNKNOWN') ++ ' | ' ++ (error.description default '')]"/>
+        </on-error-propagate>
+    </error-handler>
+
+</mule>

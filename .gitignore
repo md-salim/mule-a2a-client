@@ -1,0 +1,25 @@
+# Target / build output
+target/
+
+# IDE files
+.classpath
+.project
+.settings/
+*.iml
+.idea/
+
+# Mule tooling
+.mule/
+.tooling-project/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — never commit real keys or passwords
+src/main/resources/conf/*.prod.yaml
+src/main/resources/conf/*.qa.yaml
+.tooling-project

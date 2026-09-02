@@ -1,0 +1,9 @@
+{
+  "classifier": "mule-application",
+  "groupId": "com.mycompany",
+  "assetId": "mule-a2a-client",
+  "version": "1.0.0",
+  "name": "Mule A2A Client",
+  "tags": [],
+  "descriptorVersion": "1.0.0"
+}

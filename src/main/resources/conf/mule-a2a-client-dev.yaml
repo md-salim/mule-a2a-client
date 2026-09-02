@@ -1,0 +1,13 @@
+http:
+  port: "8084"
+  host: "0.0.0.0"
+
+a2a:
+  agent:
+    host: "localhost"
+    port: "8083"
+    basePath: "/v1/sf-account-agent"
+
+logging:
+  level: "DEBUG"
+  category: "com.centric.a2aclient"
