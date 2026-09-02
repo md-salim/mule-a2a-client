@@ -44,17 +44,18 @@
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var pushCfg = if (vars.pushUrl != null)
-    { taskPushNotificationConfig: { url: vars.pushUrl } ++ (if (vars.pushToken != null) {token: vars.pushToken} else {}) }
-else
-    {}
-var cfg = { acceptedOutputModes: ["application/json", "text/plain"] } ++ pushCfg
-var base = {
-    message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] },
-    configuration: cfg
-}
 ---
-if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></ee:set-payload>
+{
+    message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] },
+    configuration: {
+        acceptedOutputModes: ["application/json", "text/plain"],
+        (taskPushNotificationConfig: {
+            url: vars.pushUrl,
+            (token: vars.pushToken) if vars.pushToken != null
+        }) if vars.pushUrl != null
+    },
+    (contextId: vars.contextId) if vars.contextId != null
+}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:send-message config-ref="A2A_Client_Config" doc:name="A2A Send Message" doc:id="a2a-send-message">
@@ -85,17 +86,18 @@ if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var pushCfg = if (vars.pushUrl != null)
-    { taskPushNotificationConfig: { url: vars.pushUrl } ++ (if (vars.pushToken != null) {token: vars.pushToken} else {}) }
-else
-    {}
-var cfg = { acceptedOutputModes: ["application/json", "text/plain"] } ++ pushCfg
-var base = {
-    message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] },
-    configuration: cfg
-}
 ---
-if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></ee:set-payload>
+{
+    message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] },
+    configuration: {
+        acceptedOutputModes: ["application/json", "text/plain"],
+        (taskPushNotificationConfig: {
+            url: vars.pushUrl,
+            (token: vars.pushToken) if vars.pushToken != null
+        }) if vars.pushUrl != null
+    },
+    (contextId: vars.contextId) if vars.contextId != null
+}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:send-stream-message config-ref="A2A_Client_Config" doc:name="A2A Send Stream Message" doc:id="a2a-send-stream-msg">
