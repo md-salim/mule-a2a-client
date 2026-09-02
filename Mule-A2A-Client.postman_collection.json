@@ -308,6 +308,35 @@
           "response": []
         },
         {
+          "name": "Send Stream Message — SSE Stream",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"SSE 200\", function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages/stream",
+            "description": "Sends a streaming message to the A2A agent.\nThe connector establishes an SSE stream — events arrive as: SUBMITTED → artifact → COMPLETED.\nSet Accept: text/event-stream in Postman to see SSE events."
+          },
+          "response": []
+        },
+        {
           "name": "Send Message — With Context ID (Continue Conversation)",
           "event": [
             {
@@ -470,6 +499,29 @@
           "response": []
         },
         {
+          "name": "Subscribe To Task (SSE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"SSE 200\", function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/subscribe",
+            "description": "Reconnects to an existing SSE session for a task in WORKING state.\nReceives buffered events from where the connection was lost.\nUses: {{taskId}}"
+          },
+          "response": []
+        },
+        {
           "name": "Cancel Task",
           "event": [
             {
@@ -541,6 +593,52 @@
             },
             "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/push-notification-configs",
             "description": "Registers a webhook callback for task status updates.\nThe A2A server will POST SSE-style updates to the callback URL.\n\nUses: {{taskId}}, {{pushCallbackUrl}}, {{pushBearerToken}}\nAuto-saves: pushConfigId"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Push Notification Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\",function(){pm.response.to.have.status(200);});pm.test(\"No error\",function(){pm.expect(pm.response.json()).to.not.have.property('error');});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/push-notification-configs/{{pushConfigId}}",
+            "description": "Gets a specific push notification config by configId.\nUses: {{taskId}}, {{pushConfigId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Push Notification Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\",function(){pm.response.to.have.status(200);});pm.test(\"No error\",function(){pm.expect(pm.response.json()).to.not.have.property('error');});console.log('[A2A-CLIENT] Push config deleted');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/v1/a2a-client/tasks/{{taskId}}/push-notification-configs/{{pushConfigId}}",
+            "description": "Deletes a push notification config by configId.\nUses: {{taskId}}, {{pushConfigId}}"
           },
           "response": []
         },
