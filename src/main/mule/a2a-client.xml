@@ -10,16 +10,12 @@
     <!-- ================================================================
     FLOW 1: GET AGENT CARD
     GET /v1/a2a-client/agent-card
-    A2A Connector: a2a:get-card
+    A2A: a2a:get-card
     ================================================================ -->
     <flow name="a2a-client-get-agent-card-flow" doc:id="f1" doc:name="Get Agent Card">
         <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/agent-card" allowedMethods="GET" doc:name="GET /agent-card" doc:id="l1">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'GET-AGENT-CARD',event:'REQUEST'},'application/json')]" doc:name="Log Request"/>
         <a2a:get-card config-ref="A2A_Client_Config" doc:name="A2A Get Card" doc:id="a2a-get-card"/>
@@ -31,17 +27,13 @@
     FLOW 2: SEND MESSAGE (blocking)
     POST /v1/a2a-client/messages
     Body: { "userMessage": "...", "contextId": "optional" }
-    A2A Connector: a2a:send-message
+    A2A: a2a:send-message
     Response: A2A Task { id, contextId, status, artifacts }
     ================================================================ -->
     <flow name="a2a-client-send-message-flow" doc:id="f2" doc:name="Send Message">
         <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/messages" allowedMethods="POST" doc:name="POST /messages" doc:id="l2">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-MESSAGE',event:'REQUEST',userMessage:(payload.userMessage default 'N/A')},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="userMessage" value="#[payload.userMessage default 'List all Salesforce accounts']" doc:name="Store userMessage"/>
@@ -50,53 +42,70 @@
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
-var msgParams = {
-    message: {
-        messageId: uuid(),
-        role: "ROLE_USER",
-        parts: [{ text: vars.userMessage }]
-    }
-}
+var base = { message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] } }
 ---
-if (vars.contextId != null)
-    msgParams ++ { contextId: vars.contextId }
-else
-    msgParams]]></ee:set-payload>
+if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:send-message config-ref="A2A_Client_Config" doc:name="A2A Send Message" doc:id="a2a-send-message">
-            <a2a:message-send-params><![CDATA[#[payload]]]></a2a:message-send-params>
+            <a2a:message><![CDATA[#[payload]]]></a2a:message>
         </a2a:send-message>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-MESSAGE',event:'RESPONSE',taskId:(payload.id default 'N/A'),state:(payload.status.state default 'N/A')},'application/json')]" doc:name="Log Response"/>
         <error-handler ref="Global_Error_Handler"/>
     </flow>
 
     <!-- ================================================================
-    FLOW 3: LIST TASKS
-    GET /v1/a2a-client/tasks?contextId=xxx&pageSize=10&historyLength=5
-    A2A Connector: a2a:list-tasks
-    Response: { tasks: [...] }
+    FLOW 3: SEND STREAM MESSAGE (SSE)
+    POST /v1/a2a-client/messages/stream  (Accept: text/event-stream)
+    Body: { "userMessage": "...", "contextId": "optional" }
+    A2A: a2a:send-stream-message
+    Response: SSE stream of TaskStatusUpdateEvent / TaskArtifactUpdateEvent
     ================================================================ -->
-    <flow name="a2a-client-list-tasks-flow" doc:id="f3" doc:name="List Tasks">
-        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks" allowedMethods="GET" doc:name="GET /tasks" doc:id="l3">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+    <flow name="a2a-client-send-stream-message-flow" doc:id="f3" doc:name="Send Stream Message">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/messages/stream" allowedMethods="POST" doc:name="POST /messages/stream" doc:id="l3">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"text/event-stream","Cache-Control":"no-cache"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
+        </http:listener>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-STREAM-MESSAGE',event:'REQUEST',userMessage:(payload.userMessage default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <set-variable variableName="userMessage" value="#[payload.userMessage default 'List all Salesforce accounts']" doc:name="Store userMessage"/>
+        <set-variable variableName="contextId" value="#[payload.contextId default null]" doc:name="Store contextId"/>
+        <ee:transform doc:name="Build MessageSendParams" doc:id="t3">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var base = { message: { messageId: uuid(), role: "ROLE_USER", parts: [{ text: vars.userMessage }] } }
+---
+if (vars.contextId != null) base ++ { contextId: vars.contextId } else base]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <a2a:send-stream-message config-ref="A2A_Client_Config" doc:name="A2A Send Stream Message" doc:id="a2a-send-stream-msg">
+            <a2a:stream-message><![CDATA[#[payload]]]></a2a:stream-message>
+        </a2a:send-stream-message>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SEND-STREAM-MESSAGE',event:'RESPONSE'},'application/json')]" doc:name="Log Response"/>
+        <error-handler ref="Global_Error_Handler"/>
+    </flow>
+
+    <!-- ================================================================
+    FLOW 4: LIST TASKS
+    GET /v1/a2a-client/tasks?contextId=xxx&pageSize=10&historyLength=5
+    A2A: a2a:list-tasks
+    Response: array of A2A Task objects
+    ================================================================ -->
+    <flow name="a2a-client-list-tasks-flow" doc:id="f4" doc:name="List Tasks">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks" allowedMethods="GET" doc:name="GET /tasks" doc:id="l4">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'LIST-TASKS',event:'REQUEST',contextId:(attributes.queryParams.contextId default null)},'application/json')]" doc:name="Log Request"/>
-        <ee:transform doc:name="Build ListTasks Params" doc:id="t3">
+        <ee:transform doc:name="Build ListTasks Params" doc:id="t4">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 var qp = attributes.queryParams default {}
 ---
-{}
-    ++ (if (qp.contextId != null) {contextId: qp.contextId} else {})
-    ++ (if (qp.pageSize != null) {pageSize: qp.pageSize as Number} else {})
-    ++ (if (qp.historyLength != null) {historyLength: qp.historyLength as Number} else {})]]></ee:set-payload>
+{} ++ (if (qp.contextId != null) {contextId: qp.contextId} else {})
+   ++ (if (qp.pageSize != null) {pageSize: qp.pageSize as Number} else {})
+   ++ (if (qp.historyLength != null) {historyLength: qp.historyLength as Number} else {})]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:list-tasks config-ref="A2A_Client_Config" doc:name="A2A List Tasks" doc:id="a2a-list-tasks">
@@ -107,32 +116,24 @@ var qp = attributes.queryParams default {}
     </flow>
 
     <!-- ================================================================
-    FLOW 4: GET TASK BY ID
+    FLOW 5: GET TASK BY ID
     GET /v1/a2a-client/tasks/{taskId}?historyLength=10
-    A2A Connector: a2a:get-task
-    Response: A2A Task object
+    A2A: a2a:get-task
     ================================================================ -->
-    <flow name="a2a-client-get-task-flow" doc:id="f4" doc:name="Get Task">
-        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}" allowedMethods="GET" doc:name="GET /tasks/{taskId}" doc:id="l4">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+    <flow name="a2a-client-get-task-flow" doc:id="f5" doc:name="Get Task">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}" allowedMethods="GET" doc:name="GET /tasks/{taskId}" doc:id="l5">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'GET-TASK',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
         <set-variable variableName="historyLength" value="#[attributes.queryParams.historyLength default 5]" doc:name="Store historyLength"/>
-        <ee:transform doc:name="Build TaskQuery Params" doc:id="t4">
+        <ee:transform doc:name="Build TaskQuery" doc:id="t5">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{
-    id: vars.taskId,
-    historyLength: vars.historyLength as Number
-}]]></ee:set-payload>
+{ id: vars.taskId, historyLength: vars.historyLength as Number }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:get-task config-ref="A2A_Client_Config" doc:name="A2A Get Task" doc:id="a2a-get-task">
@@ -143,90 +144,147 @@ output application/json
     </flow>
 
     <!-- ================================================================
-    FLOW 5: CANCEL TASK
+    FLOW 6: CANCEL TASK
     POST /v1/a2a-client/tasks/{taskId}/cancel
-    A2A Connector: a2a:cancel-task
-    Response: A2A Task (with TASK_STATE_CANCELED status)
+    A2A: a2a:cancel-task
     ================================================================ -->
-    <flow name="a2a-client-cancel-task-flow" doc:id="f5" doc:name="Cancel Task">
-        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/cancel" allowedMethods="POST" doc:name="POST /tasks/{taskId}/cancel" doc:id="l5">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+    <flow name="a2a-client-cancel-task-flow" doc:id="f6" doc:name="Cancel Task">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/cancel" allowedMethods="POST" doc:name="POST /cancel" doc:id="l6">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'CANCEL-TASK',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
-        <a2a:cancel-task config-ref="A2A_Client_Config" taskId="#[vars.taskId]" doc:name="A2A Cancel Task" doc:id="a2a-cancel-task"/>
+        <a2a:cancel-task config-ref="A2A_Client_Config" doc:name="A2A Cancel Task" doc:id="a2a-cancel-task">
+            <a2a:task-id><![CDATA[#[vars.taskId]]]></a2a:task-id>
+        </a2a:cancel-task>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'CANCEL-TASK',event:'RESPONSE',taskId:(payload.id default 'N/A'),state:(payload.status.state default 'N/A')},'application/json')]" doc:name="Log Response"/>
         <error-handler ref="Global_Error_Handler"/>
     </flow>
 
     <!-- ================================================================
-    FLOW 6: CREATE PUSH NOTIFICATION CONFIG
-    POST /v1/a2a-client/tasks/{taskId}/push-notification-configs
-    Body: { "url": "https://...", "token": "bearer-token" }
-    A2A Connector: a2a:create-push-notification-config
+    FLOW 7: SUBSCRIBE TO TASK (SSE)
+    GET /v1/a2a-client/tasks/{taskId}/subscribe
+    A2A: a2a:subscribe-to-task
     ================================================================ -->
-    <flow name="a2a-client-create-push-config-flow" doc:id="f6" doc:name="Create Push Notification Config">
-        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/push-notification-configs" allowedMethods="POST" doc:name="POST /push-notification-configs" doc:id="l6">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+    <flow name="a2a-client-subscribe-to-task-flow" doc:id="f7" doc:name="Subscribe To Task">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/subscribe" allowedMethods="GET" doc:name="GET /subscribe" doc:id="l7">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"text/event-stream","Cache-Control":"no-cache"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
-        <logger level="INFO" category="${logging.category}" message="#[write({flow:'CREATE-PUSH-CONFIG',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SUBSCRIBE-TO-TASK',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
-        <ee:transform doc:name="Build TaskPushNotificationConfig" doc:id="t6">
+        <ee:transform doc:name="Build TaskIdParams" doc:id="t7">
             <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0
-output application/json
----
-{
-    taskId: vars.taskId,
-    url: payload.url
-} ++ (if (payload.token != null) {token: payload.token} else {})]]></ee:set-payload>
+                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { id: vars.taskId }]]></ee:set-payload>
             </ee:message>
         </ee:transform>
-        <a2a:create-push-notification-config config-ref="A2A_Client_Config" doc:name="A2A Create Push Config" doc:id="a2a-create-push-config">
-            <a2a:task-push-notification-config><![CDATA[#[payload]]]></a2a:task-push-notification-config>
-        </a2a:create-push-notification-config>
-        <logger level="INFO" category="${logging.category}" message="#[write({flow:'CREATE-PUSH-CONFIG',event:'RESPONSE',configId:(payload.id default 'N/A')},'application/json')]" doc:name="Log Response"/>
+        <a2a:subscribe-to-task config-ref="A2A_Client_Config" doc:name="A2A Subscribe To Task" doc:id="a2a-subscribe-task">
+            <a2a:task-id-params><![CDATA[#[payload]]]></a2a:task-id-params>
+        </a2a:subscribe-to-task>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'SUBSCRIBE-TO-TASK',event:'RESPONSE'},'application/json')]" doc:name="Log Response"/>
         <error-handler ref="Global_Error_Handler"/>
     </flow>
 
     <!-- ================================================================
-    FLOW 7: LIST PUSH NOTIFICATION CONFIGS
-    GET /v1/a2a-client/tasks/{taskId}/push-notification-configs
-    A2A Connector: a2a:list-push-notification-configs
+    FLOW 8: CREATE PUSH NOTIFICATION CONFIG
+    POST /v1/a2a-client/tasks/{taskId}/push-notification-configs
+    Body: { "url": "https://...", "token": "bearer-token" }
+    A2A: a2a:create-push-notification-config
     ================================================================ -->
-    <flow name="a2a-client-list-push-configs-flow" doc:id="f7" doc:name="List Push Notification Configs">
-        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/push-notification-configs" allowedMethods="GET" doc:name="GET /push-notification-configs" doc:id="l7">
-            <http:response statusCode="#[vars.httpStatus default 200]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:response>
-            <http:error-response statusCode="#[vars.httpStatus default 500]">
-                <http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers>
-            </http:error-response>
+    <flow name="a2a-client-create-push-config-flow" doc:id="f8" doc:name="Create Push Config">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/push-notification-configs" allowedMethods="POST" doc:name="POST /push-configs" doc:id="l8">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
         </http:listener>
-        <logger level="INFO" category="${logging.category}" message="#[write({flow:'LIST-PUSH-CONFIGS',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'CREATE-PUSH-CONFIG',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
         <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
-        <ee:transform doc:name="Build ListPushConfigParams" doc:id="t7">
+        <ee:transform doc:name="Build PushConfig" doc:id="t8">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{ taskId: vars.taskId }]]></ee:set-payload>
+{ taskId: vars.taskId, url: payload.url } ++ (if (payload.token != null) {token: payload.token} else {})]]></ee:set-payload>
             </ee:message>
         </ee:transform>
-        <a2a:list-push-notification-configs config-ref="A2A_Client_Config" doc:name="A2A List Push Configs" doc:id="a2a-list-push-configs">
+        <a2a:create-push-notification-config config-ref="A2A_Client_Config" doc:name="A2A Create Push Config" doc:id="a2a-create-push">
+            <a2a:task-push-notification-config><![CDATA[#[payload]]]></a2a:task-push-notification-config>
+        </a2a:create-push-notification-config>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'CREATE-PUSH-CONFIG',event:'RESPONSE',id:(payload.id default 'N/A')},'application/json')]" doc:name="Log Response"/>
+        <error-handler ref="Global_Error_Handler"/>
+    </flow>
+
+    <!-- ================================================================
+    FLOW 9: LIST PUSH NOTIFICATION CONFIGS
+    GET /v1/a2a-client/tasks/{taskId}/push-notification-configs
+    A2A: a2a:list-push-notification-configs
+    ================================================================ -->
+    <flow name="a2a-client-list-push-configs-flow" doc:id="f9" doc:name="List Push Configs">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/push-notification-configs" allowedMethods="GET" doc:name="GET /push-configs" doc:id="l9">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
+        </http:listener>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'LIST-PUSH-CONFIGS',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
+        <ee:transform doc:name="Build ListPushConfigParams" doc:id="t9">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { taskId: vars.taskId }]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <a2a:list-push-notification-configs config-ref="A2A_Client_Config" doc:name="A2A List Push Configs" doc:id="a2a-list-push">
             <a2a:list-push-config-params><![CDATA[#[payload]]]></a2a:list-push-config-params>
         </a2a:list-push-notification-configs>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'LIST-PUSH-CONFIGS',event:'RESPONSE'},'application/json')]" doc:name="Log Response"/>
+        <error-handler ref="Global_Error_Handler"/>
+    </flow>
+
+    <!-- ================================================================
+    FLOW 10: GET PUSH NOTIFICATION CONFIG
+    GET /v1/a2a-client/tasks/{taskId}/push-notification-configs/{configId}
+    A2A: a2a:get-push-notification-config
+    ================================================================ -->
+    <flow name="a2a-client-get-push-config-flow" doc:id="f10" doc:name="Get Push Config">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/push-notification-configs/{configId}" allowedMethods="GET" doc:name="GET /push-configs/{configId}" doc:id="l10">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
+        </http:listener>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'GET-PUSH-CONFIG',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A'),configId:(attributes.uriParams.configId default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
+        <set-variable variableName="configId" value="#[attributes.uriParams.configId]" doc:name="Store configId"/>
+        <ee:transform doc:name="Build GetPushConfigParams" doc:id="t10">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { taskId: vars.taskId, id: vars.configId }]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <a2a:get-push-notification-config config-ref="A2A_Client_Config" doc:name="A2A Get Push Config" doc:id="a2a-get-push">
+            <a2a:get-push-config-params><![CDATA[#[payload]]]></a2a:get-push-config-params>
+        </a2a:get-push-notification-config>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'GET-PUSH-CONFIG',event:'RESPONSE',id:(payload.id default 'N/A')},'application/json')]" doc:name="Log Response"/>
+        <error-handler ref="Global_Error_Handler"/>
+    </flow>
+
+    <!-- ================================================================
+    FLOW 11: DELETE PUSH NOTIFICATION CONFIG
+    DELETE /v1/a2a-client/tasks/{taskId}/push-notification-configs/{configId}
+    A2A: a2a:delete-push-notification-config
+    ================================================================ -->
+    <flow name="a2a-client-delete-push-config-flow" doc:id="f11" doc:name="Delete Push Config">
+        <http:listener config-ref="A2A_Client_HTTP_Listener_Config" path="/v1/a2a-client/tasks/{taskId}/push-notification-configs/{configId}" allowedMethods="DELETE" doc:name="DELETE /push-configs/{configId}" doc:id="l11">
+            <http:response statusCode="#[vars.httpStatus default 200]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]"><http:headers><![CDATA[#[{"Content-Type":"application/json"}]]]></http:headers></http:error-response>
+        </http:listener>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'DELETE-PUSH-CONFIG',event:'REQUEST',taskId:(attributes.uriParams.taskId default 'N/A'),configId:(attributes.uriParams.configId default 'N/A')},'application/json')]" doc:name="Log Request"/>
+        <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
+        <set-variable variableName="configId" value="#[attributes.uriParams.configId]" doc:name="Store configId"/>
+        <ee:transform doc:name="Build DeletePushConfigParams" doc:id="t11">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { taskId: vars.taskId, id: vars.configId }]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <a2a:delete-push-notification-config config-ref="A2A_Client_Config" doc:name="A2A Delete Push Config" doc:id="a2a-delete-push">
+            <a2a:get-push-config-params><![CDATA[#[payload]]]></a2a:get-push-config-params>
+        </a2a:delete-push-notification-config>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'DELETE-PUSH-CONFIG',event:'RESPONSE'},'application/json')]" doc:name="Log Response"/>
         <error-handler ref="Global_Error_Handler"/>
     </flow>
 
