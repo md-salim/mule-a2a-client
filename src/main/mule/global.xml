@@ -3,16 +3,34 @@
       xmlns:a2a="http://www.mulesoft.org/schema/mule/a2a"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
          http://www.mulesoft.org/schema/mule/a2a  http://www.mulesoft.org/schema/mule/a2a/current/mule-a2a.xsd
-         http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+         http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+         http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
 
     <!-- Configuration Properties -->
     <configuration-properties doc:id="config-props-01"
                                doc:name="Configuration Properties"
                                file="config.properties"/>
+
+    <!-- Secure Properties — AES/CBC decryption for sensitive values (e.g. bearer token in production)
+         Pass secure.key at runtime:
+           Local:    -M-Dsecure.key=MuleSoft2024Key!
+           CloudHub: set 'secure.key' as a protected app property
+         In production, replace a2a.security.bearer.token plain value with:
+           a2a.security.bearer.token=![AES/CBC-encrypted-value]
+         and reference it below as ${secure::a2a.security.bearer.token}
+    -->
+    <secure-properties:config doc:id="secure-props-config-01"
+                               doc:name="Secure Properties Config"
+                               file="config.properties"
+                               key="${secure.key}"
+                               name="Secure_Properties_Config">
+        <secure-properties:encrypt algorithm="AES" mode="CBC"/>
+    </secure-properties:config>
 
     <!-- ================================================================
          HTTP LISTENER CONFIG — A2A Client REST API on port 8084
@@ -33,13 +51,20 @@
 
     <!-- ================================================================
          A2A CLIENT CONFIG — mule4-a2a-connector 2.0.0 (client-side)
-         Uses JSON-RPC binding to communicate with the CI SF Account Agent.
-         agentUrl: full base URL of the A2A agent (resolves /rpc automatically)
+         Uses HTTP+JSON binding to communicate with the CI SF Account Agent.
+         agentUrl    : full base URL of the A2A agent (connector appends /rest)
+         bearerToken : passed as  Authorization: Bearer <token>  on every request.
+                       Value must match a2a.security.bearer.token on the server.
     ================================================================ -->
     <a2a:client-config doc:id="a2a-client-cfg-01"
                        doc:name="A2A Client Config"
                        name="A2A_Client_Config">
-		<a2a:http-json-client-connection agentUrl="${a2a.agent.url}" />
+        <a2a:http-json-client-connection agentUrl="${a2a.agent.url}">
+            <!-- Inject Authorization: Bearer <token> on every outbound A2A request -->
+            <a2a:default-headers>
+                <a2a:default-header key="Authorization" value="Bearer ${a2a.security.bearer.token}"/>
+            </a2a:default-headers>
+        </a2a:http-json-client-connection>
     </a2a:client-config>
 
     <!-- ================================================================
