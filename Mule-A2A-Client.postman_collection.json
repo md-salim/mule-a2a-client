@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a2a-mule-client-v1",
     "name": "Mule A2A Client — CI SF Account Agent",
-    "description": "REST client for mule-a2a-client (port 8084). All requests go through the A2A Client facade which forwards them as JSON-RPC to mule-a2a-server (port 8083).\n\n**Flow:** Send Message → taskId auto-saved → use in Get Task / Cancel Task / Push Configs\n**Tip:** Run 'List All Tasks' to pick up an existing taskId from a previous session.",
+    "description": "REST client for mule-a2a-client (port 8084). All requests go through the A2A Client facade which forwards them as JSON-RPC to mule-a2a-server (port 8083).\n\n**Flow:** Send Message → taskId auto-saved → use in Get Task / Cancel Task / Push Configs\n**Tip:** Run 'List All Tasks' to pick up an existing taskId from a previous session.\n\n**Security:** The A2A Client facade adds `Authorization: Bearer {{bearerToken}}` automatically when forwarding requests to mule-a2a-server. Postman requests to port 8084 do NOT need the Bearer token — it is injected internally by mule-a2a-client.\n\n**Dev token (for reference):** `a2a-sf-account-2024` — must match `a2a.security.bearer.token` in mule-a2a-server config.properties.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -11,6 +11,12 @@
       "value": "http://localhost:8084",
       "type": "string",
       "description": "mule-a2a-client base URL (port 8084)"
+    },
+    {
+      "key": "bearerToken",
+      "value": "a2a-sf-account-2024",
+      "type": "string",
+      "description": "Bearer token used by mule-a2a-client when forwarding requests to mule-a2a-server. Managed internally — Postman requests to port 8084 do NOT need this header. Must match a2a.security.bearer.token in mule-a2a-server/config.properties."
     },
     {
       "key": "taskId",
