@@ -39,7 +39,7 @@
     <a2a:client-config doc:id="a2a-client-cfg-01"
                        doc:name="A2A Client Config"
                        name="A2A_Client_Config">
-        <a2a:jsonrpc-client-connection agentUrl="${a2a.agent.url}"/>
+		<a2a:http-json-client-connection agentUrl="${a2a.agent.url}" />
     </a2a:client-config>
 
     <!-- ================================================================

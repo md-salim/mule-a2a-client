@@ -231,7 +231,13 @@ output application/json
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-{ taskId: vars.taskId, url: payload.url } ++ (if (payload.token != null) {token: payload.token} else {})]]></ee:set-payload>
+{
+	taskId: vars.taskId,
+	url: payload.url
+} ++ (if ( payload.token != null ) {
+	token: payload.token
+} else {
+})]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:create-push-notification-config config-ref="A2A_Client_Config" doc:name="A2A Create Push Config" doc:id="a2a-create-push">
@@ -255,13 +261,26 @@ output application/json
         <set-variable variableName="taskId" value="#[attributes.uriParams.taskId]" doc:name="Store taskId"/>
         <ee:transform doc:name="Build ListPushConfigParams" doc:id="t9">
             <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { taskId: vars.taskId }]]></ee:set-payload>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	taskId: vars.taskId
+}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:list-push-notification-configs config-ref="A2A_Client_Config" doc:name="A2A List Push Configs" doc:id="a2a-list-push">
             <a2a:list-push-config-params><![CDATA[#[payload]]]></a2a:list-push-config-params>
         </a2a:list-push-notification-configs>
-        <logger level="INFO" category="${logging.category}" message="#[write({flow:'LIST-PUSH-CONFIGS',event:'RESPONSE'},'application/json')]" doc:name="Log Response"/>
+        <ee:transform doc:name="Serialize Push Configs to JSON" doc:id="t9b">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" category="${logging.category}" message="#[write({flow:'LIST-PUSH-CONFIGS',event:'RESPONSE',count:sizeOf(payload.pushNotificationConfigs default payload default [])},'application/json')]" doc:name="Log Response"/>
         <error-handler ref="Global_Error_Handler"/>
     </flow>
 
@@ -280,12 +299,26 @@ output application/json
         <set-variable variableName="configId" value="#[attributes.uriParams.configId]" doc:name="Store configId"/>
         <ee:transform doc:name="Build GetPushConfigParams" doc:id="t10">
             <ee:message>
-                <ee:set-payload><![CDATA[%dw 2.0 output application/json --- { taskId: vars.taskId, id: vars.configId }]]></ee:set-payload>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	taskId: vars.taskId,
+	id: vars.configId
+}]]></ee:set-payload>
             </ee:message>
         </ee:transform>
         <a2a:get-push-notification-config config-ref="A2A_Client_Config" doc:name="A2A Get Push Config" doc:id="a2a-get-push">
             <a2a:get-push-config-params><![CDATA[#[payload]]]></a2a:get-push-config-params>
         </a2a:get-push-notification-config>
+        <ee:transform doc:name="Serialize Push Config to JSON" doc:id="t10b">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
         <logger level="INFO" category="${logging.category}" message="#[write({flow:'GET-PUSH-CONFIG',event:'RESPONSE',id:(payload.id default 'N/A')},'application/json')]" doc:name="Log Response"/>
         <error-handler ref="Global_Error_Handler"/>
     </flow>

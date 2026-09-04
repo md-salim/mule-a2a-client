@@ -337,6 +337,35 @@
           "response": []
         },
         {
+          "name": "Send Stream Message — With Push Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"SSE 200\", function() { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userMessage\": \"List all Salesforce accounts\",\n  \"pushUrl\": \"{{pushCallbackUrl}}\",\n  \"pushToken\": \"{{pushBearerToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/v1/a2a-client/messages/stream",
+            "description": "Sends a streaming SSE message with a pushUrl.\nThe A2A client maps pushUrl → MessageSendParams.configuration.taskPushNotificationConfig.url before forwarding to the server.\nThe server sends a webhook callback to pushUrl on task completion.\n\nUses: {{pushCallbackUrl}}, {{pushBearerToken}}\nSet Accept: text/event-stream to receive SSE events."
+          },
+          "response": []
+        },
+        {
           "name": "Send Message — With Push Notification",
           "event": [
             {
@@ -369,7 +398,7 @@
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/v1/a2a-client/messages",
-            "description": "Sends a SendMessage with a pushUrl.\nThe A2A server extracts the pushUrl from MessageSendParams.configuration.taskPushNotificationConfig and sends a webhook callback on task completion.\n\nUses: {{pushCallbackUrl}}, {{pushBearerToken}}\nAuto-saves: taskId, contextId"
+            "description": "Sends a SendMessage with a pushUrl.\nThe A2A client maps pushUrl → MessageSendParams.configuration.taskPushNotificationConfig.url before forwarding to the server.\nThe server extracts payload.configuration.taskPushNotificationConfig.url and sends a webhook callback on task completion.\n\nUses: {{pushCallbackUrl}}, {{pushBearerToken}}\nAuto-saves: taskId, contextId"
           },
           "response": []
         },
