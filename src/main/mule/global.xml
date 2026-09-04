@@ -3,35 +3,29 @@
       xmlns:a2a="http://www.mulesoft.org/schema/mule/a2a"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
-      xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="
          http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
          http://www.mulesoft.org/schema/mule/a2a  http://www.mulesoft.org/schema/mule/a2a/current/mule-a2a.xsd
-         http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-         http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+         http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 
     <!-- Configuration Properties -->
     <configuration-properties doc:id="config-props-01"
                                doc:name="Configuration Properties"
                                file="config.properties"/>
 
-    <!-- Secure Properties — AES/CBC decryption for sensitive values (e.g. bearer token in production)
-         Pass secure.key at runtime:
-           Local:    -M-Dsecure.key=MuleSoft2024Key!
-           CloudHub: set 'secure.key' as a protected app property
-         In production, replace a2a.security.bearer.token plain value with:
-           a2a.security.bearer.token=![AES/CBC-encrypted-value]
-         and reference it below as ${secure::a2a.security.bearer.token}
+    <!-- NOTE: Bearer token is currently stored as plaintext in config.properties.
+         To encrypt it for production:
+         1. Add mule-secure-properties-module dependency to pom.xml
+         2. Encrypt the token with Mule Secure Properties Tool (AES/CBC):
+               java -cp secure-properties-tool.jar \
+                 com.mulesoft.tools.SecurePropertiesTool \
+                 string encrypt AES CBC MuleSoft2024Key! "a2a-sf-account-2024"
+         3. Replace in config.properties:
+               a2a.security.bearer.token=![<encrypted-value>]
+         4. Re-add secure-properties:config here and reference as ${secure::a2a.security.bearer.token}
+         5. Pass -M-Dsecure.key=MuleSoft2024Key! at runtime
     -->
-    <secure-properties:config doc:id="secure-props-config-01"
-                               doc:name="Secure Properties Config"
-                               file="config.properties"
-                               key="${secure.key}"
-                               name="Secure_Properties_Config">
-        <secure-properties:encrypt algorithm="AES" mode="CBC"/>
-    </secure-properties:config>
-
     <!-- ================================================================
          HTTP LISTENER CONFIG — A2A Client REST API on port 8084
          Exposes:
