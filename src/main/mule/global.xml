@@ -14,47 +14,19 @@
                                doc:name="Configuration Properties"
                                file="config.properties"/>
 
-    <!-- NOTE: Bearer token is currently stored as plaintext in config.properties.
-         To encrypt it for production:
-         1. Add mule-secure-properties-module dependency to pom.xml
-         2. Encrypt the token with Mule Secure Properties Tool (AES/CBC):
-               java -cp secure-properties-tool.jar \
-                 com.mulesoft.tools.SecurePropertiesTool \
-                 string encrypt AES CBC MuleSoft2024Key! "a2a-sf-account-2024"
-         3. Replace in config.properties:
-               a2a.security.bearer.token=![<encrypted-value>]
-         4. Re-add secure-properties:config here and reference as ${secure::a2a.security.bearer.token}
-         5. Pass -M-Dsecure.key=MuleSoft2024Key! at runtime
-    -->
-    <!-- ================================================================
-         HTTP LISTENER CONFIG — A2A Client REST API on port 8084
-         Exposes:
-           GET  /v1/a2a-client/agent-card
-           POST /v1/a2a-client/messages
-           GET  /v1/a2a-client/tasks
-           GET  /v1/a2a-client/tasks/{taskId}
-           POST /v1/a2a-client/tasks/{taskId}/cancel
-           POST /v1/a2a-client/tasks/{taskId}/push-notification-configs
-           GET  /v1/a2a-client/tasks/{taskId}/push-notification-configs
-    ================================================================ -->
+    
     <http:listener-config doc:id="a2a-client-http-listener-cfg-01"
                           doc:name="A2A Client HTTP Listener Config"
                           name="A2A_Client_HTTP_Listener_Config">
-        <http:listener-connection host="0.0.0.0" port="${http.port}"/>
+        <http:listener-connection host="0.0.0.0" port="${http.port}" readTimeout="3000000"/>
     </http:listener-config>
 
-    <!-- ================================================================
-         A2A CLIENT CONFIG — mule4-a2a-connector 2.0.0 (client-side)
-         Uses HTTP+JSON binding to communicate with the CI SF Account Agent.
-         agentUrl    : full base URL of the A2A agent (connector appends /rest)
-         bearerToken : passed as  Authorization: Bearer <token>  on every request.
-                       Value must match a2a.security.bearer.token on the server.
-    ================================================================ -->
     <a2a:client-config doc:id="a2a-client-cfg-01"
                        doc:name="A2A Client Config"
                        name="A2A_Client_Config">
-        <a2a:http-json-client-connection agentUrl="${a2a.agent.url}">
-            <!-- Inject Authorization: Bearer <token> on every outbound A2A request -->
+        <a2a:http-json-client-connection agentUrl="${a2a.agent.url}"
+                                         requestTimeout="5"
+                                         requestTimeoutUnit="MINUTES">
             <a2a:default-headers>
                 <a2a:default-header key="Authorization" value="Bearer ${a2a.security.bearer.token}"/>
             </a2a:default-headers>
