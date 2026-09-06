@@ -1,4 +1,5 @@
 {
+  "name": "mule-a2a-client",
   "minMuleVersion": "4.11.0",
   "javaSpecificationVersions": [
     "17"
